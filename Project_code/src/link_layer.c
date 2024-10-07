@@ -258,11 +258,106 @@ int llread(unsigned char *packet)
     int number_of_bytes_read = 0;
 
     enum ReadingState state = START_STATE;
-    char byte;
+    char byte , cByte;
 
     while (state != STOP_STATE)
     {
-        /* code */
+        readByte(&byte);
+        switch (state)
+        {
+        case START_STATE:
+            if (byte == FLAG)
+            {
+                state = FLAG_RCV_STATE;
+            }
+            break;
+        case FLAG_RCV_STATE:
+            if (byte == A1) {
+                state = A_RCV_STATE;
+            } else if (byte != FLAG) {
+                state = START_STATE; // Remain in the same state if incorrect byte
+            }
+            break;
+        case A_RCV_STATE:
+
+            switch (byte)
+            {
+            case SET:
+                state = C_RCV_STATE;
+                break;
+            case DISC:
+                state = DISCONNECT_STATE;
+                break;
+            case FLAG:
+                state = FLAG_RCV_STATE;
+                break;
+            case RR0:
+                state = C_RCV_STATE;
+                cByte = RR0;
+                break;
+            case RR1:
+                state = C_RCV_STATE;
+                cByte = RR1;
+                break;
+            default:
+                state = START_STATE;
+                break;
+            }
+            break;
+        case C_RCV_STATE:
+
+            if(byte == (A1 ^ cByte)){
+                state = READING_STATE;
+            } else if (byte == FLAG){
+                state = FLAG_RCV_STATE;
+            } else {
+                state = START_STATE;
+            }
+        case READING_STATE:
+            //TODO: Implement the reading of the data
+            //Dont know what to do to terminate the reading
+            if (byte == FLAG)
+            {
+                state = STOP_STATE;
+            }
+            else if (byte == ESC_STUFF)
+            {
+                state = FOUND_ESC_STATE;
+            }
+            else
+            {
+                packet[number_of_bytes_read] = byte;
+                number_of_bytes_read++;
+            }
+            break;
+        case FOUND_ESC_STATE:
+            state = READING_STATE;
+            if (byte == FLAG)
+            {
+                packet[number_of_bytes_read] = FLAG_STUFF;
+                number_of_bytes_read++;
+                packet[number_of_bytes_read] = ESC_STUFF;
+                number_of_bytes_read++;   
+            }
+            else if (byte == FLAG_STUFF)
+            {
+                packet[number_of_bytes_read] = FLAG_STUFF;
+                number_of_bytes_read++;
+                packet[number_of_bytes_read] = ESC_ESC_STUFF;
+                number_of_bytes_read++;
+            }
+            else
+            {
+                packet[number_of_bytes_read] = byte;
+                number_of_bytes_read++;
+            }
+            break;
+        case DISCONNECT_STATE:
+            sendCommandBit(0, A1, DISC);
+            return 0;
+        default:
+            break;
+        }
     }
     
 

@@ -2,6 +2,7 @@
 #define FLAG 0x7E   //Synchronisation: start or end of frame
 #define FLAG_STUFF 0x7D    //Escape octet
 #define ESC_STUFF 0x5E //Escape octet for FLAG_STUFF
+#define ESC_ESC_STUFF 0x5D   //Escape octet for ESC_STUFF
 
 //This commands define the Address field in the frames - A field
 #define A1 0x03     //Address field in frames that are commands sent by the Transmitter or replies sent by the Receiver
