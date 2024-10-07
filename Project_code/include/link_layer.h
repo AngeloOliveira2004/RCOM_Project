@@ -30,6 +30,18 @@ enum State {
     BCC2_OK_STATE
 };
 
+enum ReadingState{
+    START_STATE,
+    FLAG_RCV_STATE,
+    A_RCV_STATE,
+    C_RCV_STATE,
+    BCC1_OK_STATE,
+    STOP_STATE,
+    FOUND_ESC_STATE,
+    DISCONNECT_STATE,
+    READING_STATE,
+};
+
 typedef enum
 {
     LlTx,

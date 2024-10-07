@@ -237,8 +237,7 @@ int llopen(LinkLayer connectionParameters)
     }
 
     
-
-    return 1;
+    return fd;
 }
 
 ////////////////////////////////////////////////
@@ -246,7 +245,7 @@ int llopen(LinkLayer connectionParameters)
 ////////////////////////////////////////////////
 int llwrite(const unsigned char *buf, int bufSize)
 {
-    // TODO
+    int number_of_bytes_written = 0;
 
     return 0;
 }
@@ -256,34 +255,18 @@ int llwrite(const unsigned char *buf, int bufSize)
 ////////////////////////////////////////////////
 int llread(unsigned char *packet)
 {
-    //Filter the Packet
+    int number_of_bytes_read = 0;
 
-    unsigned char *packetFiltered = malloc(MAX_PAYLOAD_SIZE);
-    int packetFilteredSize = 0;
+    enum ReadingState state = START_STATE;
+    char byte;
 
-    for (int i = 0; i < MAX_PAYLOAD_SIZE; i++)
+    while (state != STOP_STATE)
     {
-        if (packet[i] == FLAG)
-        {
-            if (packet[i + 1] == FLAG)
-            {
-                packetFiltered[packetFilteredSize] = packet[i];
-                packetFilteredSize++;
-                i++;
-            }
-            else
-            {
-                break;
-            }
-        }
-        else
-        {
-            packetFiltered[packetFilteredSize] = packet[i];
-            packetFilteredSize++;
-        }
+        /* code */
     }
+    
 
-    return 0;
+    return number_of_bytes_read;
 }
 
 ////////////////////////////////////////////////
