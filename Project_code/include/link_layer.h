@@ -72,4 +72,6 @@ int llclose(int showStatistics);
 
 void alarmHandler(int signal);
 
+int sendCommandBit(int fd , unsigned char A , unsigned char C);
+
 #endif // _LINK_LAYER_H_

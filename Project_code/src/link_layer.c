@@ -34,52 +34,203 @@ int llopen(LinkLayer connectionParameters)
 
     connectionParameters.role == LlTx ? llwrite(NULL, 0) : llread(NULL);
 
-    unsigned char message[MSG_SIZE];
+    int fd = connectionParameters.serialPort;
+    enum State state = START_STATE;
 
     //Implement the state machine
 
     switch (connectionParameters.role)
     {
     case LlTx:
-        
+    
+        signal(SIGALRM, alarmHandler);
         while (connectionParameters.nRetransmissions > 0){
 
             if (alarmEnabled == FALSE) {
-                alarm(3);
-                signal(SIGALRM, alarmHandler);
 
-                message[0] = FLAG;
-                message[1] = A1;
-                message[2] = SET;
-                message[3] = A1 ^ SET;
-                message[4] = FLAG;
+                alarm(connectionParameters.timeout);
+                sendCommandBit(fd, A1, SET);
 
-                llwrite(message, 5);
-                // Resend the SET message after the alarm triggers
-                /*bytes_written = write(fd, set_message, MSG_SIZE);
-                if (bytes_written != MSG_SIZE) {
-                    perror("write");
-                    exit(-1);
-                }
-                printf("Resent %d bytes\n", bytes_written);
-                */
                 alarmEnabled = TRUE;
                 connectionParameters.nRetransmissions--;
             }
             
-        }
-        {
-            /* code */
-        }
-        
-        // Send SET frame
+            while (state != STOP_STATE && alarmEnabled == TRUE)
+            {
+                switch (state)  
+                {
+                case START_STATE:
 
-        // Wait for UA frame
-    
+                    unsigned char byte;
+                    readByte(&byte);
 
+                    if (byte == FLAG)
+                    {
+                        state = FLAG_RCV_STATE;
+                    }
+
+                    break;
+                case FLAG_RCV_STATE:
+                    unsigned char byte;
+                    readByte(&byte);
+                    
+                    switch (byte)
+                    {
+                    case FLAG:
+                        state = FLAG_RCV_STATE;
+                        break;
+                    case A1:
+                        state = A_RCV_STATE;
+                        break;
+                    default:
+                        state = START_STATE;
+                        break;
+                    }
+                    break;
+                case A_RCV_STATE:
+                    unsigned char byte;
+                    readByte(&byte);
+                    switch (byte)
+                    {
+                    case SET:
+                        state = C_RCV_STATE;
+                        break;
+                    case FLAG:
+                        state = FLAG_RCV_STATE;
+                        break;
+                    default:
+                        state = START_STATE;
+                        break;
+                    }
+                    break;
+                case C_RCV_STATE:
+                    unsigned char byte;
+                    readByte(&byte);
+                    switch (byte)
+                    {
+                    case A1 ^ SET:
+                        state = BCC1_OK_STATE;
+                        break;
+                    case FLAG:
+                        state = FLAG_RCV_STATE;
+                        break;
+                    default:
+                        state = START_STATE;
+                        break;
+                    }
+                    break;
+                case BCC1_OK_STATE:
+                    unsigned char byte;
+                    readByte(&byte);
+                    switch (byte)
+                    {
+                    case FLAG:
+                        state = STOP_STATE;
+                        break;
+                    default:
+                        state = START_STATE;
+                        break;
+                    }
+                    break;
+                default:
+                    exit(-1);
+                    break;
+                }                    
+            }
+            
+            if(state != STOP_STATE){
+                exit(-1);
+            }
+        }
+      
         break;
     case LlRx:
-        /* code */
+        
+        while (state != STOP_STATE)
+        {
+            switch (state)
+            {
+            case START_STATE:
+                unsigned char byte;
+                readByte(&byte);
+                if (byte == FLAG)
+                {
+                    state = FLAG_RCV_STATE;
+                }
+                break;
+            case FLAG_RCV_STATE:
+                unsigned char byte;
+                readByte(&byte);
+                switch (byte)
+                {
+                case FLAG:
+                    state = FLAG_RCV_STATE;
+                    break;
+                case A1:
+                    state = A_RCV_STATE;
+                    break;
+                default:
+                    state = START_STATE;
+                    break;
+                }
+                break;
+            case A_RCV_STATE:
+                unsigned char byte;
+                readByte(&byte);
+                switch (byte)
+                {
+                case SET:
+                    state = C_RCV_STATE;
+                    break;
+                case FLAG:
+                    state = FLAG_RCV_STATE;
+                    break;
+                default:
+                    state = START_STATE;
+                    break;
+                }
+                break;
+            case C_RCV_STATE:
+                unsigned char byte;
+                readByte(&byte);
+                switch (byte)
+                {
+                case A1 ^ SET:
+                    state = BCC1_OK_STATE;
+                    break;
+                case FLAG:
+                    state = FLAG_RCV_STATE;
+                    break;
+                default:
+                    state = START_STATE;
+                    break;
+                }
+                break;
+            case BCC1_OK_STATE:
+                unsigned char byte;
+                readByte(&byte);
+                switch (byte)
+                {
+                case FLAG:
+                    state = STOP_STATE;
+                    break;
+                default:
+                    state = START_STATE;
+                    break;
+                }
+                break;
+            default:
+                exit(-1);
+                break;
+            }
+        }
+
+        if(state != STOP_STATE){
+            exit(-1);
+        }
+
+        sendCommandBit(fd, A1, UA);
+
         break;
     default:
         printf("Invalid role\n");
@@ -167,4 +318,14 @@ int llclose(int showStatistics)
 
     int clstat = closeSerialPort();
     return clstat;
+}
+
+int sendCommandBit(int fd , unsigned char A , unsigned char C){
+    unsigned char message[5] = {FLAG, A, C, A ^ C, FLAG};
+    int bytes_written = write(fd, message, 5);
+    if (bytes_written != 5) {
+        perror("write");
+        exit(-1);
+    }
+    return bytes_written;
 }
