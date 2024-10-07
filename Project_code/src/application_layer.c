@@ -12,18 +12,6 @@
 
 */
 
-int alarmEnabled = FALSE;
-int alarmCount = 0;
-
-// Alarm function handler
-void alarmHandler(int signal)
-{
-    alarmEnabled = FALSE;
-    alarmCount++;
-
-    printf("Alarm #%d\n", alarmCount);
-}
-
 void applicationLayer(const char *serialPort, const char *role, int baudRate,
                       int nTries, int timeout, const char *filename)
 {

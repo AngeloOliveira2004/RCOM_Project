@@ -26,17 +26,17 @@ void alarmHandler(int signal)
 
 int llopen(LinkLayer connectionParameters)
 {
-    if (openSerialPort(connectionParameters.serialPort,
-                       connectionParameters.baudRate) < 0)
+    int fd = openSerialPort(connectionParameters.serialPort, connectionParameters.baudRate);
+
+    if (fd < 0)
     {
         return -1;
     }
 
     connectionParameters.role == LlTx ? llwrite(NULL, 0) : llread(NULL);
-
-    int fd = connectionParameters.serialPort;
     enum State state = START_STATE;
 
+    char byte;
     //Implement the state machine
 
     switch (connectionParameters.role)
@@ -60,8 +60,7 @@ int llopen(LinkLayer connectionParameters)
                 switch (state)  
                 {
                 case START_STATE:
-
-                    unsigned char byte;
+                    
                     readByte(&byte);
 
                     if (byte == FLAG)
@@ -71,7 +70,7 @@ int llopen(LinkLayer connectionParameters)
 
                     break;
                 case FLAG_RCV_STATE:
-                    unsigned char byte;
+                    
                     readByte(&byte);
                     
                     switch (byte)
@@ -88,7 +87,7 @@ int llopen(LinkLayer connectionParameters)
                     }
                     break;
                 case A_RCV_STATE:
-                    unsigned char byte;
+                    
                     readByte(&byte);
                     switch (byte)
                     {
@@ -104,7 +103,7 @@ int llopen(LinkLayer connectionParameters)
                     }
                     break;
                 case C_RCV_STATE:
-                    unsigned char byte;
+                    
                     readByte(&byte);
                     switch (byte)
                     {
@@ -120,7 +119,7 @@ int llopen(LinkLayer connectionParameters)
                     }
                     break;
                 case BCC1_OK_STATE:
-                    unsigned char byte;
+                    
                     readByte(&byte);
                     switch (byte)
                     {
@@ -151,7 +150,7 @@ int llopen(LinkLayer connectionParameters)
             switch (state)
             {
             case START_STATE:
-                unsigned char byte;
+                
                 readByte(&byte);
                 if (byte == FLAG)
                 {
@@ -159,7 +158,7 @@ int llopen(LinkLayer connectionParameters)
                 }
                 break;
             case FLAG_RCV_STATE:
-                unsigned char byte;
+                
                 readByte(&byte);
                 switch (byte)
                 {
@@ -175,7 +174,7 @@ int llopen(LinkLayer connectionParameters)
                 }
                 break;
             case A_RCV_STATE:
-                unsigned char byte;
+                
                 readByte(&byte);
                 switch (byte)
                 {
@@ -191,7 +190,7 @@ int llopen(LinkLayer connectionParameters)
                 }
                 break;
             case C_RCV_STATE:
-                unsigned char byte;
+                
                 readByte(&byte);
                 switch (byte)
                 {
@@ -207,7 +206,7 @@ int llopen(LinkLayer connectionParameters)
                 }
                 break;
             case BCC1_OK_STATE:
-                unsigned char byte;
+                
                 readByte(&byte);
                 switch (byte)
                 {
@@ -237,29 +236,7 @@ int llopen(LinkLayer connectionParameters)
         exit(-1);
     }
 
-    if (connectionParameters.role == LlTx) {
-        // Send SET frame
-        unsigned char setFrame[5] = {FLAG, A1, SET , A1 ^ SET, FLAG};
-        llwrite(setFrame, 5);
-
-        // Wait for UA frame
-        unsigned char uaFrame[5];
-        readSerialPort(uaFrame, 5);
-        if (uaFrame[2] != UA) {
-            return -1;
-        }
-    } else {
-        // Wait for SET frame
-        unsigned char setFrame[5];
-        readSerialPort(setFrame, 5);
-        if (setFrame[2] != SET) {
-            return -1;
-        }
-
-        // Send UA frame
-        unsigned char uaFrame[5] = {FLAG, A1, UA, A1 ^ UA, FLAG};
-        llwrite(uaFrame, 5);
-    }
+    
 
     return 1;
 }
