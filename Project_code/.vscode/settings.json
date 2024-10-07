@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "globals.h": "c",
+        "link_layer.h": "c",
+        "serial_port.h": "c"
+    }
+}
