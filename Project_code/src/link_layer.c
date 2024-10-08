@@ -246,8 +246,42 @@ int llopen(LinkLayer connectionParameters)
 int llwrite(const unsigned char *buf, int bufSize)
 {
     int number_of_bytes_written = 0;
+    int error = 0;
+    enum WritingState state = START_WRITING_STATE;
 
-    return 0;
+    unsigned char * packet = (unsigned char *)  malloc(bufSize + 5);
+    packet[0] = FLAG;
+    packet[1] = A1;
+    packet[2] = SET;
+    packet[3] = A1 ^ SET;
+    packet[4] = FLAG;
+
+    memcpy(packet + 5, buf, bufSize);
+
+    unsigned char byte = buf[0];
+
+    for (size_t i = 0; i < bufSize; i++)
+    {
+        packet[i + 5] = buf[i] ^ byte;
+    }
+    
+
+    while (state != STOP_WRITING_STATE)
+    {
+        switch (state)
+        {
+        case START_WRITING_STATE:
+            sendCommandBit(0, A1, SET);
+            break;
+        
+        default:
+            break;
+        }
+    }
+    
+
+
+    return number_of_bytes_written;
 }
 
 ////////////////////////////////////////////////
@@ -441,6 +475,9 @@ int llread(unsigned char *packet)
 ////////////////////////////////////////////////
 int llclose(int showStatistics)
 {
+
+    enum ControlStates state = START;
+    char byte;
     
 
     int clstat = closeSerialPort();

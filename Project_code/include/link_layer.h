@@ -32,6 +32,27 @@ enum ReadingState{
     ERROR_STATE
 };
 
+enum WritingState{
+    START_WRITING_STATE,
+    FLAG_WRITING_STATE,
+    A_WRITING_STATE,
+    C_WRITING_STATE,
+    BCC_WRITING_STATE,
+    DATA_WRITING_STATE,
+    ESC_WRITING_STATE,
+    STOP_WRITING_STATE
+};
+
+enum ControlStates{
+    START,
+    FLAG_RCV,
+    A_RCV,
+    C_RCV,
+    BCC1_OK,
+    DATA_RCV,
+    STOP
+};
+
 typedef enum
 {
     LlTx,
