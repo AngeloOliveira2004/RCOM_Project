@@ -27,7 +27,9 @@ enum ReadingState{
     FOUND_ESC_STATE,
     DISCONNECT_STATE,
     READING_STATE,
-    STOP_STATE
+    STOP_STATE,
+    BCC1_OK_STATE,
+    ERROR_STATE
 };
 
 typedef enum
@@ -73,5 +75,7 @@ int llclose(int showStatistics);
 void alarmHandler(int signal);
 
 int sendCommandBit(int fd , unsigned char A , unsigned char C);
+
+int countZerosFromPacket(unsigned char *packet, int packetSize);
 
 #endif // _LINK_LAYER_H_

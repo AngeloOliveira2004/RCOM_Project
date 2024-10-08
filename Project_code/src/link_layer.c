@@ -34,7 +34,7 @@ int llopen(LinkLayer connectionParameters)
     }
 
     connectionParameters.role == LlTx ? llwrite(NULL, 0) : llread(NULL);
-    enum State state = START_STATE;
+    enum ReadingState state = START_STATE;
 
     char byte;
     //Implement the state machine
@@ -217,9 +217,9 @@ int llopen(LinkLayer connectionParameters)
                     state = START_STATE;
                     break;
                 }
-                break;
+                break;  
             default:
-                exit(-1);
+                exit(-1);   
                 break;
             }
         }
@@ -254,11 +254,32 @@ int llwrite(const unsigned char *buf, int bufSize)
 // LLREAD
 ////////////////////////////////////////////////
 int llread(unsigned char *packet)
-{
+{   
+
+    /*
+        Frames will have a header , body and a trailer
+        
+        Rvery time a frame is received without errors and in the right sequence a positive
+        acknowledgement is sent back to the sender.
+
+
+        Use of timers (time-out) to enable re-transmission of un-acknowledged frames
+        Use of negative acknowledgement to request the retransmission of out-of-sequence or
+        errored frames
+        Verification of duplicates which may occur due to re-transmissions
+
+        A frame can be started with one or more flags, which must be taken into account
+        by the frame reception mechanism
+     */
+    
     int number_of_bytes_read = 0;
+    int error = 0;
+    int isDuplicate = 0; // New variable to track duplicate frames
+    int dataError = 0;   // New variable to track data errors
+    static unsigned char lastSeqNum = -1;  // Store last sequence number
 
     enum ReadingState state = START_STATE;
-    char byte , cByte;
+    char byte , cByte , seqNum;
 
     while (state != STOP_STATE)
     {
@@ -274,8 +295,11 @@ int llread(unsigned char *packet)
         case FLAG_RCV_STATE:
             if (byte == A1) {
                 state = A_RCV_STATE;
+            } else if (byte == FLAG) {
+                state = FLAG_RCV_STATE;
             } else if (byte != FLAG) {
-                state = START_STATE; // Remain in the same state if incorrect byte
+                state = ERROR_STATE; // Remain in the same state if incorrect byte
+                error = 1;
             }
             break;
         case A_RCV_STATE:
@@ -300,22 +324,42 @@ int llread(unsigned char *packet)
                 cByte = RR1;
                 break;
             default:
-                state = START_STATE;
+                error = 1;
+                state = ERROR_STATE;
                 break;
             }
             break;
         case C_RCV_STATE:
+            seqNum = byte; // Store sequence number
+            if (seqNum == lastSeqNum) {
+                isDuplicate = 1; // Mark as duplicate
+            } else {
+                lastSeqNum = seqNum; // Update last sequence number
+            }
 
             if(byte == (A1 ^ cByte)){
                 state = READING_STATE;
             } else if (byte == FLAG){
                 state = FLAG_RCV_STATE;
             } else {
-                state = START_STATE;
+                error = 1;
+                state = ERROR_STATE;
             }
+            
         case READING_STATE:
             //TODO: Implement the reading of the data
             //Dont know what to do to terminate the reading
+
+            //check if the nuber of 1s is even
+
+            //if even continue reading otherwise go to error state
+
+            if(countZerosFromPacket(packet, number_of_bytes_read) == 0){
+                error = 1;
+                state = ERROR_STATE;
+                break;
+            }
+
             if (byte == FLAG)
             {
                 state = STOP_STATE;
@@ -323,11 +367,23 @@ int llread(unsigned char *packet)
             else if (byte == ESC_STUFF)
             {
                 state = FOUND_ESC_STATE;
+            } else if (byte == (A1 ^ SET)){
+                state = BCC1_OK_STATE;
             }
             else
             {
                 packet[number_of_bytes_read] = byte;
                 number_of_bytes_read++;
+            }
+            break;
+        case BCC1_OK_STATE:
+            if (byte == FLAG)
+            {
+                state = STOP_STATE;
+            }
+            else
+            {
+                state = START_STATE;
             }
             break;
         case FOUND_ESC_STATE:
@@ -352,6 +408,12 @@ int llread(unsigned char *packet)
                 number_of_bytes_read++;
             }
             break;
+        case ERROR_STATE:
+            if (dataError) {
+                    sendCommandBit(0, A1, REJ0); // Send REJ if data error
+            }
+            return -1;
+            break;
         case DISCONNECT_STATE:
             sendCommandBit(0, A1, DISC);
             return 0;
@@ -359,8 +421,18 @@ int llread(unsigned char *packet)
             break;
         }
     }
-    
 
+    
+    if (isDuplicate) {
+        sendCommandBit(0, A1, REJ0); // Confirm duplicate with RR
+    } else if (!error && !dataError) {
+        sendCommandBit(0, A1, REJ0); // Send RR if no errors
+    }
+
+    if(error == 1){
+        return -1;
+    }
+    
     return number_of_bytes_read;
 }
 
@@ -383,4 +455,22 @@ int sendCommandBit(int fd , unsigned char A , unsigned char C){
         exit(-1);
     }
     return bytes_written;
+}
+
+int countZerosFromPacket(unsigned char *packet, int packetSize){
+    int count = 0;
+
+    if(packetSize == 0){
+        return 1;
+    }
+
+    for(int i = 0 ; i < packetSize ; i++){
+        char packetChar = packet[i];
+        while (packetChar != 0)
+        {
+            count += packetChar & 1;
+            packetChar >>= 1;
+        }
+    }
+    return count % 2 == 0;
 }
