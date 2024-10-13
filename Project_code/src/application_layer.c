@@ -4,6 +4,8 @@
 
 #define FALSE 0
 #define TRUE 1
+
+int sequence = 0;
 /*
 
     The application layer will fragment the data and send it one by one to the link layer
@@ -36,14 +38,6 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
         exit(-1);
     }
 
-    // Open the file
-    FILE *file = fopen(filename, "r");
-    if (file == NULL)
-    {
-        perror("Opening file");
-        exit(-1);
-    }
-
     switch (connectionParameters.role)
     {
         case LlTx:
@@ -55,9 +49,53 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
                 exit(-1);
             }
 
-
+            int currFilePos = fseek(file, 0, SEEK_CUR);
 
             fseek(file, 0, SEEK_END);
+            long fileSize; 
+            getFilesize(file, &fileSize);
+            
+            long leftFileSize = fileSize - currFilePos;
+
+            int controPacketSize = 0;
+            unsigned char *controlPacket = assembleControlPacket(filename, &fileSize, 0 , &controPacketSize);
+
+            if(llwrite(controlPacket, controPacketSize) < 0){
+                perror("Sending control packet");
+                exit(-1);
+            }
+
+
+            int dataSize = leftFileSize > T_SIZE ? T_SIZE : leftFileSize;
+            long bytesLeft = fileSize - dataSize;
+
+            while (bytesLeft > 0)
+            {   
+                dataSize = bytesLeft > T_SIZE ? T_SIZE : bytesLeft;
+                unsigned char dataPacket = assembleDataPacket(dataSize , sequence , dataPacket);
+                
+                int dataSize;
+                unsigned char *data = getData(file, dataSize);
+
+                memcpy(dataPacket + 4, data, dataSize);
+
+                if(llwrite(dataPacket, dataSize + dataPacket) < 0){
+                    perror("Sending data packet");
+                    exit(-1);
+                }
+                bytesLeft -= dataSize;
+                dataSize += T_SIZE;
+                sequence = (sequence + 1) % 255; //nao sei se é 99
+            }
+            
+            unsigned char * endControlPacket = assembleControlPacket(filename, &fileSize, 3 , &controPacketSize);
+            if(llwrite(endControlPacket, controPacketSize) < 0){
+                perror("Sending end control packet");
+                exit(-1);
+            }
+
+            llclose(0);
+            
             break;
             case LlRx:
         break;
@@ -181,9 +219,11 @@ int destuffing(char* stuffedBuffer, int* size, char* destuffedBuffer){
     return 0;
 }
 
-int assembleControlPacket(int fd, char* filename, int* filesize , int startEnd) {
+unsigned char * assembleControlPacket(char* filename, long * filesize , int startEnd , int * controlPacketSize) {
     int filenameLen = strlen(filename);
-    int packetSize = 1 + 2 + 4 + 2 + filenameLen; // C + TLV (file size) + TLV (file name)
+    int bitsNecessary = (int) log2(*filesize + 1); // Calculate the number of bits necessary to store the file size
+    int fileLenght = (int) ceil(bitsNecessary / 8.0); // Calculate the number of bytes necessary to store the file size and rounds up
+    int packetSize = 1 + 2 + 2 + filenameLen + fileLenght; // C + TLV (file size) + TLV (file name)
 
     // Allocate space for the control packet
     unsigned char controlPacket[packetSize];
@@ -195,7 +235,7 @@ int assembleControlPacket(int fd, char* filename, int* filesize , int startEnd) 
 
     // 2. File Size TLV
     controlPacket[index++] = 0;       // T: file size
-    controlPacket[index++] = 4;       // L: 4 bytes for the integer file size
+    controlPacket[index++] = fileLenght;       // L: 4 bytes for the integer file size
     controlPacket[index++] = (*filesize >> 24) & 0xFF; // V: file size (MSB first)
     controlPacket[index++] = (*filesize >> 16) & 0xFF;
     controlPacket[index++] = (*filesize >> 8) & 0xFF;
@@ -207,41 +247,18 @@ int assembleControlPacket(int fd, char* filename, int* filesize , int startEnd) 
     memcpy(&controlPacket[index], filename, filenameLen); // V: file name
     index += filenameLen;
 
-    // Send the packet
-    int bytesSent = 0;
-    int bytesToSend = index;
-/* 
-    while (bytesSent < bytesToSend) {
-        int bytesSentNow = write(fd, controlPacket + bytesSent, bytesToSend - bytesSent);
-        if (bytesSentNow < 0) {
-            perror("Sending data failed");
-            exit(-1);
-        }
-        bytesSent += bytesSentNow;
-    }
-*/
-    return bytesSent; // Return the total bytes sent
+    *controlPacketSize = packetSize;
+    return controlPacket; // Return the total bytes sent
 }
 
-int assembleDataPacket(int fd, FILE *file , unsigned char* dataPacket) {
+unsigned char * assembleDataPacket(int dataSize , int sequence , unsigned char* dataPacket) {
     // Define the maximum payload size (subtracting the control, sequence, and length bytes)
-    int maxPayloadSize = T_SIZE - 4;
-    int sequenceNumber = 99;
+    int packetSize = dataSize + 4; // Control (1) + Sequence (1) + Length (2) + Data (variable)
+    int sequenceNumber = sequence;
 
-    // Buffer to hold the data read from the file
-    unsigned char dataBuffer[maxPayloadSize];
-    int bytesRead = fread(dataBuffer, 1, maxPayloadSize, file);
-    
-    if (bytesRead <= 0) {
-        return 0; // End of file or read error
-    }
-
-    // Calculate the length in two bytes (L2, L1)
-    unsigned char L2 = (bytesRead >> 8) & 0xFF;
-    unsigned char L1 = bytesRead & 0xFF;
+    unsigned char dataBuffer[packetSize];
 
     int index = 0;
-
     // 1. Control Field (Data packet)
     dataPacket[index++] = 2; // Control field set to '2' for data
 
@@ -249,53 +266,24 @@ int assembleDataPacket(int fd, FILE *file , unsigned char* dataPacket) {
     dataPacket[index++] = sequenceNumber % 100;
 
     // 3. Length Fields
-    dataPacket[index++] = L2;
-    dataPacket[index++] = L1;
+    dataPacket[index++] = packetSize >> 8; // MSB
+    dataPacket[index++] = packetSize & 0xFF; // LSB (packetSize is 2 bytes)
 
     // 4. Data Field (Payload)
-    memcpy(&dataPacket[index], dataBuffer, bytesRead);
-    index += bytesRead;
+    memcpy(&dataPacket[index], dataBuffer, packetSize); // Copy the data to the packet
 
-    return 0; 
+    return dataPacket; 
 }
 
+unsigned char * getData(FILE * file , int dataSize){
+    unsigned char * data = (unsigned char *) malloc(dataSize  * sizeof(unsigned char));
+    fread(data, sizeof(unsigned char), dataSize, file);
+    return data;
+}
 
-// int main(int argc,char** argv){ 
-
-//     if(argv[1] != "/dev/ttyS10" || argv[1] != "/dev/ttyS11"){
-//         printf("Invalid serial port address, please insert '/dev/ttyS10' for transmitter and 'dev/ttyS11' for receiver\n");
-//         return -1;
-//     }
-
-//     if(strcmp(argv[2],"w") != 0 || strcmp(argv[2],"r") != 0){
-//         printf("Invalid operation mode, please insert 'w' for sender and 'r' to receiver\n");
-//         return -1;
-//     }
-
-//     if(atoi(argv[3]) < 0 || argv[3] == NULL){
-//         printf("Invalid baudrate, please insert a number higher then 0\n");
-//         return -1;
-//     }
-
-//     if(atoi(argv[4]) < 0 || argv[4] == NULL){
-//         printf("Invalid number of retries, please insert a number higher then 0\n");
-//         return -1;
-//     }
-
-//     if(atoi(argv[5]) < 0 || argv[5] == NULL){
-//         printf("Invalid timeout value, please insert a number higher then 0\n");
-//         return -1;
-//     }
-
-//     applicationLayer(argv[1],argv[2],atoi(argv[3]),atoi(argv[4]),atoi(argv[5]),argv[6]);
-
-//     return 0;
-// }
-
-
-int getFilesize(FILE *file,int *filesize){
+void getFilesize(FILE *file,long *filesize){
     fseek(file, 0, SEEK_END);
     *filesize = ftell(file);
     fseek(file, 0, SEEK_SET);
-    return 0;
+    return ;
 }
