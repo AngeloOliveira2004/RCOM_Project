@@ -33,9 +33,8 @@ int llopen(LinkLayer connectionParameters)
         return -1;
     }
 
-    connectionParameters.role == LlTx ? llwrite(NULL, 0) : llread(NULL);
+    //connectionParameters.role == LlTx ? llwrite(NULL, 0) : llread(NULL);
     enum ReadingState state = START_STATE;
-
     char byte;
     //Implement the state machine
 
@@ -313,10 +312,11 @@ int llread(unsigned char *packet)
     static unsigned char lastSeqNum = -1;  // Store last sequence number
 
     enum ReadingState state = START_STATE;
-    char byte , cByte , seqNum;
+    char byte , cByte , seqNum, lastByte;
 
     while (state != STOP_STATE)
     {
+        lastByte = byte;
         readByte(&byte);
         switch (state)
         {
@@ -396,7 +396,10 @@ int llread(unsigned char *packet)
 
             if (byte == FLAG)
             {
-                state = STOP_STATE;
+                packet[number_of_bytes_read] = FLAG_STUFF;
+                number_of_bytes_read++;
+                packet[number_of_bytes_read] = ESC_STUFF;
+                number_of_bytes_read++;
             }
             else if (byte == ESC_STUFF)
             {
@@ -444,7 +447,7 @@ int llread(unsigned char *packet)
             break;
         case ERROR_STATE:
             if (dataError) {
-                    sendCommandBit(0, A1, REJ0); // Send REJ if data error
+                sendCommandBit(0, A1, REJ0); // Send REJ if data error
             }
             return -1;
             break;
@@ -511,3 +514,7 @@ int countZerosFromPacket(unsigned char *packet, int packetSize){
     }
     return count % 2 == 0;
 }
+
+
+
+// Byte 

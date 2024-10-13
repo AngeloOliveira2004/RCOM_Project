@@ -55,6 +55,8 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
                 exit(-1);
             }
 
+
+
             fseek(file, 0, SEEK_END);
             break;
             case LlRx:
@@ -130,40 +132,138 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
     */
 }
 
+void stuffing(char* buffer, int* size, char* stuffedBuffer){
+    int i = 0;
+    int j = 0;
 
-int main(int argc,char** argv){ 
-
-    if(argc != 7){
-        printf("Usage: %s <serial_port_addr> <operation_mode (w/r)> <baudrate> <nRetries> <timeout> <file_name>\n",argv[0]);
-        return -1;
+    for(i = 0; i < *size; i++){
+        if(buffer[i] == FLAG){ // buffer[i] == 0x7e
+            stuffedBuffer[j] = FLAG_STUFF; // stuffedBuffer[j] = 0x7d
+            j++;
+            stuffedBuffer[j] = ESC_STUFF; // stuffedBuffer[j] = 0x5e
+            
+        }else if (buffer[i] == FLAG_STUFF){
+            stuffedBuffer[j] = FLAG_STUFF; // stuffedBuffer[j] = 0x7d
+            j++;
+            stuffedBuffer[j] = ESC_ESC_STUFF; // stuffedBuffer[j] = 0x5d
+        }
+        else
+        {
+            stuffedBuffer[j] = buffer[i];
+        }
+        j++;
     }
 
-    if(argv[1] != "/dev/ttyS10" && argv[1] != "/dev/ttyS11"){
-        printf("Invalid serial port address, please insert '/dev/ttyS10' for transmitter and 'dev/ttyS11' for receiver\n");
-        return -1;
+    *size = j;
+    return ; 
+}
+
+int destuffing(char* stuffedBuffer, int* size, char* destuffedBuffer){
+    int i = 0;
+    int j = 0;
+
+    for(i = 0; i < *size; i++){
+        if(stuffedBuffer[i] == FLAG_STUFF){ // stuffedBuffer[i] == 0x7d
+            if(stuffedBuffer[i] == ESC_ESC_STUFF){ // stuffedBuffer[i+1] == 0x5d
+                destuffedBuffer[j] = FLAG_STUFF; // destuffedBuffer[j] = 0x7d 
+                i++;
+            }else if(stuffedBuffer[i] == ESC_STUFF){ // stuffedBuffer[i+1] == 0x5e
+                destuffedBuffer[j] = FLAG_STUFF; // destuffedBuffer[j] = 0x7e
+                i++;
+            }
+        }else{
+            destuffedBuffer[j] = stuffedBuffer[i];
+        }
+        j++;
     }
+    
+    *size = j;
+    return 0;
+}
 
-    if(strcmp(argv[2],"w") != 0 && strcmp(argv[2],"r") != 0){
-        printf("Invalid operation mode, please insert 'w' for sender and 'r' to receiver\n");
-        return -1;
+int assembleControlPacket(int fd, char* filename, int* filesize , int startEnd) {
+    int filenameLen = strlen(filename);
+    int packetSize = 1 + 2 + 4 + 2 + filenameLen; // C + TLV (file size) + TLV (file name)
+
+    // Allocate space for the control packet
+    unsigned char controlPacket[packetSize];
+
+    int index = 0;
+
+    // 1. Control Field (Start packet)
+    controlPacket[index++] = startEnd; // Start control packet
+
+    // 2. File Size TLV
+    controlPacket[index++] = 0;       // T: file size
+    controlPacket[index++] = 4;       // L: 4 bytes for the integer file size
+    controlPacket[index++] = (*filesize >> 24) & 0xFF; // V: file size (MSB first)
+    controlPacket[index++] = (*filesize >> 16) & 0xFF;
+    controlPacket[index++] = (*filesize >> 8) & 0xFF;
+    controlPacket[index++] = *filesize & 0xFF;
+
+    // 3. File Name TLV
+    controlPacket[index++] = 1;                 // T: file name
+    controlPacket[index++] = filenameLen & 0xFF; // L: length of the file name string
+    memcpy(&controlPacket[index], filename, filenameLen); // V: file name
+    index += filenameLen;
+
+    // Send the packet
+    int bytesSent = 0;
+    int bytesToSend = index;
+/* 
+    while (bytesSent < bytesToSend) {
+        int bytesSentNow = write(fd, controlPacket + bytesSent, bytesToSend - bytesSent);
+        if (bytesSentNow < 0) {
+            perror("Sending data failed");
+            exit(-1);
+        }
+        bytesSent += bytesSentNow;
     }
+*/
+    return bytesSent; // Return the total bytes sent
+}
 
-    if(atoi(argv[3]) < 0 || argv[3] == NULL){
-        printf("Invalid baudrate, please insert a number higher then 0\n");
-        return -1;
-    }
+int assembleDataPacket(int fd, char* filename, FILE * file){
+    
+}
 
-    if(atoi(argv[4]) < 0 || argv[4] == NULL){
-        printf("Invalid number of retries, please insert a number higher then 0\n");
-        return -1;
-    }
 
-    if(atoi(argv[5]) < 0 || argv[5] == NULL){
-        printf("Invalid timeout value, please insert a number higher then 0\n");
-        return -1;
-    }
+// int main(int argc,char** argv){ 
 
-    applicationLayer(argv[1],argv[2],atoi(argv[3]),atoi(argv[4]),atoi(argv[5]),argv[6]);
+//     if(argv[1] != "/dev/ttyS10" || argv[1] != "/dev/ttyS11"){
+//         printf("Invalid serial port address, please insert '/dev/ttyS10' for transmitter and 'dev/ttyS11' for receiver\n");
+//         return -1;
+//     }
 
+//     if(strcmp(argv[2],"w") != 0 || strcmp(argv[2],"r") != 0){
+//         printf("Invalid operation mode, please insert 'w' for sender and 'r' to receiver\n");
+//         return -1;
+//     }
+
+//     if(atoi(argv[3]) < 0 || argv[3] == NULL){
+//         printf("Invalid baudrate, please insert a number higher then 0\n");
+//         return -1;
+//     }
+
+//     if(atoi(argv[4]) < 0 || argv[4] == NULL){
+//         printf("Invalid number of retries, please insert a number higher then 0\n");
+//         return -1;
+//     }
+
+//     if(atoi(argv[5]) < 0 || argv[5] == NULL){
+//         printf("Invalid timeout value, please insert a number higher then 0\n");
+//         return -1;
+//     }
+
+//     applicationLayer(argv[1],argv[2],atoi(argv[3]),atoi(argv[4]),atoi(argv[5]),argv[6]);
+
+//     return 0;
+// }
+
+
+int getFilesize(FILE *file,int *filesize){
+    fseek(file, 0, SEEK_END);
+    *filesize = ftell(file);
+    fseek(file, 0, SEEK_SET);
     return 0;
 }

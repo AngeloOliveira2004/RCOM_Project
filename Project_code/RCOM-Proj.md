@@ -79,4 +79,6 @@
 - Para terminar a conexão, o Sender envia DISC, o Receiver responde com um DISC e o Sender envia um UA a confirmar que recebeu o DISC, isto pois (Onde colocar? Dentro do llwrite e llread, isto é, as maquinas de estado têm a lógica para verificar se é uma flag? O mais lógico é no llclose, mas a função não esta a receber o LinkLayer):
     - O último a a sair da conexão tem de ser o Receiver, para evitar o seguinte caso. Se o sender enviar o DISC e o receiver enviar o DISC e desconectar, caso o DISC do receiver se perder, o sender voltaria a enviar o DISC passado o time-out, ficando assim num ciclo infinito
 
+TODO
 
+Organizar states machine no llopen

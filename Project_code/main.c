@@ -17,12 +17,39 @@
 //   $3: tx | rx
 //   $4: filename
 int main(int argc, char *argv[])
-{
-    if (argc < 5) {
-        printf("Usage: %s /dev/ttySxx baudrate tx|rx filename\n", argv[0]);
-        exit(1);
+{ 
+    if(argc != 7){
+        printf("Usage: %s <serial_port_addr> <operation_mode (w/r)> <baudrate> <nRetries> <timeout> <file_name>\n",argv[0]);
+        return -1;
     }
 
+    if(argv[1] != "/dev/ttyS10" || argv[1] != "/dev/ttyS11"){
+        printf("Invalid serial port address, please insert '/dev/ttyS10' for transmitter and 'dev/ttyS11' for receiver\n");
+        return -1;
+    }
+
+    if(strcmp(argv[2],"w") != 0 || strcmp(argv[2],"r") != 0){
+        printf("Invalid operation mode, please insert 'w' for sender and 'r' to receiver\n");
+        return -1;
+    }
+
+    if(atoi(argv[3]) < 0 || argv[3] == NULL){
+        printf("Invalid baudrate, please insert a number higher then 0\n");
+        return -1;
+    }
+
+    if(atoi(argv[4]) < 0 || argv[4] == NULL){
+        printf("Invalid number of retries, please insert a number higher then 0\n");
+        return -1;
+    }
+
+    if(atoi(argv[5]) < 0 || argv[5] == NULL){
+        printf("Invalid timeout value, please insert a number higher then 0\n");
+        return -1;
+    }
+
+    // Change this
+    
     const char *serialPort = argv[1];
     const int baudrate = atoi(argv[2]);
     const char *role = argv[3];
