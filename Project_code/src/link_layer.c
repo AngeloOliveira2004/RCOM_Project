@@ -26,7 +26,7 @@ void alarmHandler(int signal)
 
 int llopen(LinkLayer connectionParameters)
 {
-    int fd = openSerialPort(connectionParameters.serialPort, connectionParameters.baudRate);
+    int fd = openSerialPort(connectionParameters.serialPort, connectionParameters.baudRate); // Open the serial port with the parameters defined in the struct
 
     if (fd < 0)
     {

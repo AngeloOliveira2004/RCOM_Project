@@ -55,8 +55,8 @@ enum ControlStates{
 
 typedef enum
 {
-    LlTx,
-    LlRx,
+    LlTx, // Transmitter_Role
+    LlRx, // Receiver_Role
 } LinkLayerRole;
 
 typedef struct
