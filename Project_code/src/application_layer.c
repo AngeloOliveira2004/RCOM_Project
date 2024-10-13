@@ -223,8 +223,40 @@ int assembleControlPacket(int fd, char* filename, int* filesize , int startEnd) 
     return bytesSent; // Return the total bytes sent
 }
 
-int assembleDataPacket(int fd, char* filename, FILE * file){
+int assembleDataPacket(int fd, FILE *file , unsigned char* dataPacket) {
+    // Define the maximum payload size (subtracting the control, sequence, and length bytes)
+    int maxPayloadSize = T_SIZE - 4;
+    int sequenceNumber = 99;
+
+    // Buffer to hold the data read from the file
+    unsigned char dataBuffer[maxPayloadSize];
+    int bytesRead = fread(dataBuffer, 1, maxPayloadSize, file);
     
+    if (bytesRead <= 0) {
+        return 0; // End of file or read error
+    }
+
+    // Calculate the length in two bytes (L2, L1)
+    unsigned char L2 = (bytesRead >> 8) & 0xFF;
+    unsigned char L1 = bytesRead & 0xFF;
+
+    int index = 0;
+
+    // 1. Control Field (Data packet)
+    dataPacket[index++] = 2; // Control field set to '2' for data
+
+    // 2. Sequence Number (0-99)
+    dataPacket[index++] = sequenceNumber % 100;
+
+    // 3. Length Fields
+    dataPacket[index++] = L2;
+    dataPacket[index++] = L1;
+
+    // 4. Data Field (Payload)
+    memcpy(&dataPacket[index], dataBuffer, bytesRead);
+    index += bytesRead;
+
+    return 0; 
 }
 
 
