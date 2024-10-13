@@ -95,10 +95,43 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
             }
 
             llclose(0);
-            
+
             break;
-            case LlRx:
-        break;
+        case LlRx:
+            
+            unsigned char * packet = (unsigned char *) malloc(1024 * sizeof(unsigned char));
+            int packetSize = llread(packet);
+
+            if(packetSize < 0){
+                perror("Receiving control packet");
+                exit(-1);
+            }
+
+            unsigned long int fileSize = 0;
+            int filenameSize = extractFileNameAndSize(packet, packetSize, &fileSize);
+
+            FILE * file = fopen(filename, "w+"); //create with w+ for rw access
+
+            if(file == NULL){
+                perror("Opening file");
+                exit(-1);
+            }
+
+            while(1){
+                packetSize = llread(packet);
+                if(packetSize < 0){
+                    perror("Receiving data packet");
+                    exit(-1);
+                }
+
+                if(packet[1] == 3){
+                    break;
+                }
+
+                fwrite(packet + 4, sizeof(unsigned char), packetSize - 4, file);
+            }
+
+            break;
         default:
             break;
     }
@@ -279,6 +312,31 @@ unsigned char * getData(FILE * file , int dataSize){
     unsigned char * data = (unsigned char *) malloc(dataSize  * sizeof(unsigned char));
     fread(data, sizeof(unsigned char), dataSize, file);
     return data;
+}
+
+unsigned char extractFileNameAndSize(unsigned char* packet, int size, unsigned long int *fileSize){
+    int i = 0;
+    int j = 0;
+    int filenameSize = 0;
+    unsigned char filename[255];
+    unsigned char fileSizeBuffer[4];
+
+    while(i < size){
+        if(packet[i] == 0){
+            i++;
+            filenameSize = packet[i];
+            i++;
+            memcpy(filename, &packet[i], filenameSize);
+            i += filenameSize;
+        }else if(packet[i] == 1){
+            i++;
+            memcpy(fileSizeBuffer, &packet[i], 4);
+            *fileSize = (fileSizeBuffer[0] << 24) | (fileSizeBuffer[1] << 16) | (fileSizeBuffer[2] << 8) | fileSizeBuffer[3];
+            i += 4;
+        }
+    }
+
+    return filenameSize;
 }
 
 void getFilesize(FILE *file,long *filesize){
