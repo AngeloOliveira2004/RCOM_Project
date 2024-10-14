@@ -13,6 +13,7 @@ int retransmitions = 0;
 int timeout = 0;
 
 int sequenceNumber = 99;
+int curRetransmissions = 3;
 
 LinkLayerRole role;
 
@@ -22,11 +23,12 @@ LinkLayerRole role;
 
 void alarmHandler(int signal)
 {
-    alarmEnabled = FALSE;
+    alarmEnabled = TRUE;
     alarmCount++;
 
     printf("Alarm #%d\n", alarmCount);
 }
+
 
 int llopen(LinkLayer connectionParameters)
 {
@@ -41,37 +43,31 @@ int llopen(LinkLayer connectionParameters)
     timeout = connectionParameters.timeout;
     role = connectionParameters.role;
 
-    //connectionParameters.role == LlTx ? llwrite(NULL, 0) : llread(NULL);
     enum ReadingState state = START_STATE;
-    char byte;
-    //Implement the state machine
-    int curRetransmissions = connectionParameters.nRetransmissions;
+    char byte = 0x00;
+
 
     switch (connectionParameters.role)
     {
     case LlTx:
 
         signal(SIGALRM, alarmHandler);
-        sendCommandBit(fd, A1, SET);
-        while (curRetransmissions > retransmitions){
-
-            if (alarmEnabled == FALSE) {
-
-                alarm(timeout);
-                sendCommandBit(fd, A1, SET);
-
-                alarmEnabled = TRUE;
-                curRetransmissions--;
-            }
+        while (connectionParameters.nRetransmissions > 0 && state != STOP_STATE){
             
-            while (state != STOP_STATE && alarmEnabled == TRUE)
-            {
+            sendCommandBit(fd, A3, SET);
+
+            alarm(connectionParameters.timeout);
+            alarmEnabled = FALSE;
+            
+            while (state != STOP_STATE && alarmEnabled == FALSE)
+            {   
+                if(readByte(&byte) < 1){
+                    continue;
+                }
+
                 switch (state)  
                 {
                 case START_STATE:
-                    
-                    readByte(&byte);
-
                     if (byte == FLAG)
                     {
                         state = FLAG_RCV_STATE;
@@ -79,9 +75,6 @@ int llopen(LinkLayer connectionParameters)
 
                     break;
                 case FLAG_RCV_STATE:
-                    
-                    readByte(&byte);
-                    
                     switch (byte)
                     {
                     case FLAG:
@@ -96,11 +89,9 @@ int llopen(LinkLayer connectionParameters)
                     }
                     break;
                 case A_RCV_STATE:
-                    
-                    readByte(&byte);
                     switch (byte)
                     {
-                    case SET:
+                    case UA:
                         state = C_RCV_STATE;
                         break;
                     case FLAG:
@@ -113,11 +104,11 @@ int llopen(LinkLayer connectionParameters)
                     break;
                 case C_RCV_STATE:
                     
-                    readByte(&byte);
+                   
                     switch (byte)
                     {
-                    case A1 ^ SET:
-                        state = BCC1_OK_STATE;
+                    case A1 ^ UA:
+                        state = BCC_OK_STATE;
                         break;
                     case FLAG:
                         state = FLAG_RCV_STATE;
@@ -127,9 +118,8 @@ int llopen(LinkLayer connectionParameters)
                         break;
                     }
                     break;
-                case BCC1_OK_STATE:
+                case BCC_OK_STATE:
                     
-                    readByte(&byte);
                     switch (byte)
                     {
                     case FLAG:
@@ -145,39 +135,38 @@ int llopen(LinkLayer connectionParameters)
                     break;
                 }                    
             }
-            
-            if(state != STOP_STATE){
-                printf("State: %s\n", getReadingStateName(state));
-                printf("Error in the connection\n");
-                exit(-1);
-            }
+            connectionParameters.nRetransmissions--;
+        }
+
+        if(state != STOP_STATE){
+            perror("Connection failed");
+            exit(-1);
         }
       
         break;
     case LlRx:
 
         while (state != STOP_STATE)
-        {
+        {   
+            if(readByte(&byte) < 1){
+                continue;
+            }
+            
             switch (state)
             {
             case START_STATE:
-
-                readByte(&byte);
                 if (byte == FLAG)
                 {
                     state = FLAG_RCV_STATE;
                 }
                 break;
             case FLAG_RCV_STATE:
-                
-                readByte(&byte);
-                printf("Flag");
                 switch (byte)
                 {
                 case FLAG:
                     state = FLAG_RCV_STATE;
                     break;
-                case A1:
+                case A3:
                     state = A_RCV_STATE;
                     break;
                 default:
@@ -187,8 +176,6 @@ int llopen(LinkLayer connectionParameters)
                 break;
             case A_RCV_STATE:
                 
-                readByte(&byte);
-                printf("A");
                 switch (byte)
                 {
                 case SET:
@@ -204,12 +191,10 @@ int llopen(LinkLayer connectionParameters)
                 break;
             case C_RCV_STATE:
                 
-                readByte(&byte);
-                printf("C");
                 switch (byte)
                 {
-                case A1 ^ SET:
-                    state = BCC1_OK_STATE;
+                case A3 ^ SET:
+                    state = BCC_OK_STATE;
                     break;
                 case FLAG:
                     state = FLAG_RCV_STATE;
@@ -219,10 +204,8 @@ int llopen(LinkLayer connectionParameters)
                     break;
                 }
                 break;
-            case BCC1_OK_STATE:
+            case BCC_OK_STATE:
                 
-                readByte(&byte);
-                printf("BCC1");
                 switch (byte)
                 {
                 case FLAG:
@@ -251,7 +234,7 @@ int llopen(LinkLayer connectionParameters)
         exit(-1);
     }
 
-    
+    printf("Connection established\n");
     return fd;
 }
 
@@ -717,7 +700,9 @@ int llclose(int showStatistics){
 
 int sendCommandBit(int fd , unsigned char A , unsigned char C){
     unsigned char message[5] = {FLAG, A, C, A ^ C, FLAG};
-    int bytes_written = write(fd, message, 5);
+     
+    int bytes_written = writeBytes((const char *)message, 5);
+
     if (bytes_written != 5) {
         perror("write");
         exit(-1);

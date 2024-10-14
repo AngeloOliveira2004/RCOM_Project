@@ -22,7 +22,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
                       int nTries, int timeout, const char *filename)
 {
     LinkLayer connectionParameters = {
-        
+
         .role = strcmp(role, "rx") == 0 ? LlRx : LlTx,
         .baudRate = baudRate,
         .nRetransmissions = nTries,
@@ -33,7 +33,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
 
     // Open the connection
     int fd = llopen(connectionParameters);
-
+    
     if (fd < 0){
         perror("Opening connection");
         exit(-1);
