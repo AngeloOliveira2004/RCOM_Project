@@ -22,11 +22,11 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
                       int nTries, int timeout, const char *filename)
 {
     LinkLayer connectionParameters = {
-        .serialPort = *serialPort,
-        .role = strcmp(role, "r") == 0 ? LlTx : LlRx,
+        .serialPort = {*serialPort},
+        .role = strcmp(role, "rx") == 0 ? LlRx : LlTx,
         .baudRate = baudRate,
         .nRetransmissions = nTries,
-        .timeout = timeout,
+        .timeout = timeout
     };
 
     // Open the connection
@@ -70,14 +70,17 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
             while (bytesLeft > 0)
             {   
                 dataSize = bytesLeft > T_SIZE ? T_SIZE : bytesLeft;
-                unsigned char dataPacket = assembleDataPacket(dataSize , sequence , dataPacket);
+
+                int packetSize = dataSize + 4; // Control (1) + Sequence (1) + Length (2) + Data (variable)
+                unsigned char dataPacket[packetSize];
                 
-                int dataSize;
+                assembleDataPacket(packetSize , sequence , &dataPacket);
+                
                 unsigned char *data = getData(file, dataSize);
 
                 memcpy(dataPacket + 4, data, dataSize);
 
-                if(llwrite(dataPacket, dataSize + dataPacket) < 0){
+                if(llwrite(dataPacket, dataSize) < 0){
                     perror("Sending data packet");
                     if(nTries == 0){
                         exit(-1);
@@ -111,12 +114,17 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
                 exit(-1);
             }
 
-            unsigned long int fileSize = 0;
-            int filenameSize = extractFileNameAndSize(packet, packetSize, &fileSize);
+            unsigned char * fileName = malloc(255 * sizeof(unsigned char));
+            int filenameSize = extractFileNameAndSize(packet, packetSize , fileName);
 
-            FILE * file = fopen(filename, "w+"); //create with w+ for rw access
+            if(filenameSize == -1){
+                perror("Error reading name of the file");
+                exit(-1);
+            }
 
-            if(file == NULL){
+            FILE * Newfile = fopen(filename, "w+"); //create with w+ for rw access
+
+            if(Newfile == NULL){
                 perror("Opening file");
                 exit(-1);
             }
@@ -132,7 +140,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
                     break;
                 }
 
-                fwrite(packet + 4, sizeof(unsigned char), packetSize - 4, file);
+                fwrite(packet + 4, sizeof(unsigned char), packetSize - 4, Newfile);
             }
 
             break;
@@ -256,14 +264,15 @@ int destuffing(char* stuffedBuffer, int* size, char* destuffedBuffer){
     return 0;
 }
 
-unsigned char * assembleControlPacket(char* filename, long * filesize , int startEnd , int * controlPacketSize) {
+unsigned char * assembleControlPacket(const char* filename, long * filesize , int startEnd , int * controlPacketSize ) {
     int filenameLen = strlen(filename);
+    
     int bitsNecessary = (int) log2(*filesize + 1); // Calculate the number of bits necessary to store the file size
     int fileLenght = (int) ceil(bitsNecessary / 8.0); // Calculate the number of bytes necessary to store the file size and rounds up
     int packetSize = 1 + 2 + 2 + filenameLen + fileLenght; // C + TLV (file size) + TLV (file name)
 
     // Allocate space for the control packet
-    unsigned char controlPacket[packetSize];
+    unsigned char * controlPacket = malloc(packetSize * sizeof(unsigned char));
 
     int index = 0;
 
@@ -288,28 +297,19 @@ unsigned char * assembleControlPacket(char* filename, long * filesize , int star
     return controlPacket; // Return the total bytes sent
 }
 
-unsigned char * assembleDataPacket(int dataSize , int sequence , unsigned char* dataPacket) {
-    // Define the maximum payload size (subtracting the control, sequence, and length bytes)
-    int packetSize = dataSize + 4; // Control (1) + Sequence (1) + Length (2) + Data (variable)
-    int sequenceNumber = sequence;
-
-    unsigned char dataBuffer[packetSize];
-
+int assembleDataPacket(int dataSize , int sequence, unsigned char * dataPacket) {
     int index = 0;
     // 1. Control Field (Data packet)
     dataPacket[index++] = 2; // Control field set to '2' for data
 
     // 2. Sequence Number (0-99)
-    dataPacket[index++] = sequenceNumber % 100;
+    dataPacket[index++] = sequence % 100;
 
     // 3. Length Fields
-    dataPacket[index++] = packetSize >> 8; // MSB
-    dataPacket[index++] = packetSize & 0xFF; // LSB (packetSize is 2 bytes)
+    dataPacket[index++] = dataSize >> 8; // MSB
+    dataPacket[index++] = dataSize & 0xFF; // LSB (packetSize is 2 bytes)
 
-    // 4. Data Field (Payload)
-    memcpy(&dataPacket[index], dataBuffer, packetSize); // Copy the data to the packet
-
-    return dataPacket; 
+    return 0; 
 }
 
 unsigned char * getData(FILE * file , int dataSize){
@@ -318,29 +318,39 @@ unsigned char * getData(FILE * file , int dataSize){
     return data;
 }
 
-unsigned char extractFileNameAndSize(unsigned char* packet, int size, unsigned long int *fileSize){
+int extractFileNameAndSize(const unsigned char* packet, int packetSize, unsigned char* fileName) {
     int i = 0;
-    int j = 0;
     int filenameSize = 0;
-    unsigned char filename[255];
-    unsigned char fileSizeBuffer[4];
+    int sizeExtracted = 0;
+    int nameExtracted = 0;
 
-    while(i < size){
-        if(packet[i] == 0){
+    while (i < packetSize) {
+        if (packet[i] == 0) { // Start of filename segment
             i++;
-            filenameSize = packet[i];
+            filenameSize = packet[i]; // Size of the filename
             i++;
-            memcpy(filename, &packet[i], filenameSize);
+
+            if (filenameSize + i > packetSize) {
+                return -1; // Error: filename size exceeds packet bounds
+            }
+
+            // Copy filename
+            memcpy(fileName, &packet[i], filenameSize);
+            fileName[filenameSize] = '\0'; // Null-terminate
             i += filenameSize;
-        }else if(packet[i] == 1){
-            i++;
-            memcpy(fileSizeBuffer, &packet[i], 4);
-            *fileSize = (fileSizeBuffer[0] << 24) | (fileSizeBuffer[1] << 16) | (fileSizeBuffer[2] << 8) | fileSizeBuffer[3];
-            i += 4;
+            nameExtracted = 1;
+            sizeExtracted = 1;
+        } 
+        if (sizeExtracted && nameExtracted) {
+            break; // Both file name and size are extracted
         }
     }
 
-    return filenameSize;
+    if (!sizeExtracted || !nameExtracted) {
+        return -1; // Error: incomplete packet data
+    }
+
+    return filenameSize; // Success, return the size of the filename
 }
 
 void getFilesize(FILE *file,long *filesize){
