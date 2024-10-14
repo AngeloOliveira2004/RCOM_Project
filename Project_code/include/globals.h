@@ -1,12 +1,15 @@
 //This command defines the Flag field in the frames - F field
-#define FLAG 0x7E   //Synchronisation: start or end of frame
-#define FLAG_STUFF 0x7D    //Escape octet
-#define ESC_STUFF 0x5E //Escape octet for FLAG_STUFF
-#define ESC_ESC_STUFF 0x5D   //Escape octet for ESC_STUFF
+#define FLAG 0x7E      // Synchronization: start or end of frame
+#define ESCAPE_OCTET 0x7D         // Escape octet for byte-stuffing
+#define ESCAPED_FRAME_DELIMITER 0x5E  // Replacement for FRAME_DELIMITER when byte-stuffed
+#define ESCAPED_ESCAPE_OCTET 0x5D // Replacement for ESCAPE_OCTET when byte-stuffed
 
 //This commands define the Address field in the frames - A field
-#define A1 0x03     //Address field in frames that are commands sent by the Transmitter or replies sent by the Receiver
-#define A2 0x01     //Address field in frames that are commands sent by the Receiver or replies sent by the Transmitter
+#define A1 0x01     //Address field in frames that are commands sent by the Receiver or replies sent by the Transmitter
+#define A3 0x03     //Address field in frames that are commands sent by the Transmitter or replies sent by the Receiver
+
+#define C0 0x00     //Control field in frames that are commands sent by the Transmitter or replies sent by the Receiver
+#define C1 0x80     //Control field in frames that are commands sent by the Receiver or replies sent by the Transmitter
 
 //This commands define the type of frame - C field
 #define SET 0x03    //SET frame: sent by the transmitter to initiate a connection
@@ -19,14 +22,4 @@
 
 #define T_SIZE 256 //Size of the data field in the I frame
 
-//BBC field will tbe the XOR of the A and C fields
 
-/* 
-    I FRAME will tbe the frame that contains the whole data
-    It will resemble this structure:
-
-    | F | A | C | BCC1 | D1 | Data | D2 | BBC2 | F |
-
-    before stuffing and
-    after destuffing
-*/

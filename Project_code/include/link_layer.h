@@ -32,26 +32,17 @@ enum ReadingState{
     ERROR_STATE
 };
 
-enum WritingState{
-    START_WRITING_STATE,
-    FLAG_WRITING_STATE,
-    A_WRITING_STATE,
-    C_WRITING_STATE,
-    BCC_WRITING_STATE,
-    DATA_WRITING_STATE,
-    ESC_WRITING_STATE,
-    STOP_WRITING_STATE
-};
-
-enum ControlStates{
-    START,
-    FLAG_RCV,
-    A_RCV,
-    C_RCV,
-    BCC1_OK,
-    DATA_RCV,
-    STOP
-};
+typedef enum{
+    I_Frame,
+    S_Frame,
+    U_Frame,
+    Disc_Frame,
+    Error_Frame,
+    RR0_Frame,
+    RR1_Frame,
+    REJ0_Frame,
+    REJ1_Frame
+} FrameType;
 
 typedef enum
 {
@@ -98,5 +89,8 @@ void alarmHandler(int signal);
 int sendCommandBit(int fd , unsigned char A , unsigned char C);
 
 int countZerosFromPacket(unsigned char *packet, int packetSize);
+
+void stuffing(unsigned char * frameBuffer, const unsigned char* buffer, int* size);
+void destuff(unsigned char* stuffedBuffer, int* size);
 
 #endif // _LINK_LAYER_H_

@@ -74,7 +74,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
                 int packetSize = dataSize + 4; // Control (1) + Sequence (1) + Length (2) + Data (variable)
                 unsigned char dataPacket[packetSize];
                 
-                assembleDataPacket(packetSize , sequence , &dataPacket);
+                assembleDataPacket(packetSize , sequence , dataPacket);
                 
                 unsigned char *data = getData(file, dataSize);
 
@@ -148,120 +148,9 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
             break;
     }
 
-
-    /*
-    // Open the serial port
-    int fd = openSerialPort(serialPort, baudRate);
-
-    if (fd < 0)
-    {
-        perror("Opening serial port");
-        exit(-1);
-    }
-
-    // Open the file
-    FILE *file = fopen(filename, "r");
-
-    if (file == NULL)
-    {
-        perror("Opening file");
-        exit(-1);
-    }
-
-    // Read the file
-    fseek(file, 0, SEEK_END);
-    long fileSize = ftell(file);
-    fseek(file, 0, SEEK_SET);
-
-    // Allocate memory for the file
-    char *fileBuffer = malloc(fileSize);
-
-    if (fileBuffer == NULL)
-    {
-        perror("Allocating memory for file");
-        exit(-1);
-    }
-
-    // Read the file
-    fread(fileBuffer, 1, fileSize, file);
-
-    // Close the file
-    fclose(file);
-
-    // Send the file
-    int bytesSent = 0;
-    int bytesToSend = fileSize;
-
-    while (bytesSent < bytesToSend)
-    {
-        // Send the data
-        int bytesSentNow = llwrite(fileBuffer + bytesSent, bytesToSend - bytesSent);
-
-        if (bytesSentNow < 0)
-        {
-            perror("Sending data");
-            exit(-1);
-        }
-
-        // Update the number of bytes sent
-        bytesSent += bytesSentNow;
-    }
-
-    // Free the memory
-    free(fileBuffer);
-
     // Close the serial port
-    closeSerialPort();
-    */
-}
-
-void stuffing(char* buffer, int* size, char* stuffedBuffer){
-    int i = 0;
-    int j = 0;
-
-    for(i = 0; i < *size; i++){
-        if(buffer[i] == FLAG){ // buffer[i] == 0x7e
-            stuffedBuffer[j] = FLAG_STUFF; // stuffedBuffer[j] = 0x7d
-            j++;
-            stuffedBuffer[j] = ESC_STUFF; // stuffedBuffer[j] = 0x5e
-            
-        }else if (buffer[i] == FLAG_STUFF){
-            stuffedBuffer[j] = FLAG_STUFF; // stuffedBuffer[j] = 0x7d
-            j++;
-            stuffedBuffer[j] = ESC_ESC_STUFF; // stuffedBuffer[j] = 0x5d
-        }
-        else
-        {
-            stuffedBuffer[j] = buffer[i];
-        }
-        j++;
-    }
-
-    *size = j;
-    return ; 
-}
-
-int destuffing(char* stuffedBuffer, int* size, char* destuffedBuffer){
-    int i = 0;
-    int j = 0;
-
-    for(i = 0; i < *size; i++){
-        if(stuffedBuffer[i] == FLAG_STUFF){ // stuffedBuffer[i] == 0x7d
-            if(stuffedBuffer[i] == ESC_ESC_STUFF){ // stuffedBuffer[i+1] == 0x5d
-                destuffedBuffer[j] = FLAG_STUFF; // destuffedBuffer[j] = 0x7d 
-                i++;
-            }else if(stuffedBuffer[i] == ESC_STUFF){ // stuffedBuffer[i+1] == 0x5e
-                destuffedBuffer[j] = FLAG_STUFF; // destuffedBuffer[j] = 0x7e
-                i++;
-            }
-        }else{
-            destuffedBuffer[j] = stuffedBuffer[i];
-        }
-        j++;
-    }
-    
-    *size = j;
-    return 0;
+    llclose(0);
+    return;
 }
 
 unsigned char * assembleControlPacket(const char* filename, long * filesize , int startEnd , int * controlPacketSize ) {
