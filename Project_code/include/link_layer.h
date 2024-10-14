@@ -94,4 +94,7 @@ int countZerosFromPacket(unsigned char *packet, int packetSize);
 void stuffing(unsigned char * frameBuffer, const unsigned char* buffer, int* size);
 void destuff(unsigned char* stuffedBuffer, int* size);
 
+
+char* getReadingStateName(enum ReadingState state);
+
 #endif // _LINK_LAYER_H_

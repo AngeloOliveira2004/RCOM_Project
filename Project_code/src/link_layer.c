@@ -146,6 +146,8 @@ int llopen(LinkLayer connectionParameters)
             }
             
             if(state != STOP_STATE){
+                printf("State: %s\n", getReadingStateName(state));
+                printf("Error in the connection\n");
                 exit(-1);
             }
         }
@@ -814,3 +816,22 @@ void destuff(unsigned char* stuffedBuffer, int* size){
     return ;
 }
 
+
+char* getReadingStateName(enum ReadingState state) {
+    switch (state) {
+        case START_STATE:      return "START_STATE";
+        case FLAG_RCV_STATE:   return "FLAG_RCV_STATE";
+        case A_RCV_STATE:      return "A_RCV_STATE";
+        case C_RCV_STATE:      return "C_RCV_STATE";
+        case BCC_OK_STATE:     return "BCC_OK_STATE";
+        case DATA_RCV_STATE:   return "DATA_RCV_STATE";
+        case FOUND_ESC_STATE:  return "FOUND_ESC_STATE";
+        case DISCONNECT_STATE: return "DISCONNECT_STATE";
+        case READING_STATE:    return "READING_STATE";
+        case STOP_STATE:       return "STOP_STATE";
+        case BCC1_OK_STATE:    return "BCC1_OK_STATE";
+        case ERROR_STATE:      return "ERROR_STATE";
+        case DISC_RCV_STATE:   return "DISC_RCV_STATE";
+        default:               return "UNKNOWN_STATE";
+    }
+}
