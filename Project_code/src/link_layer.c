@@ -55,7 +55,6 @@ int llopen(LinkLayer connectionParameters)
         while (connectionParameters.nRetransmissions > 0 && state != STOP_STATE){
             
             sendCommandBit(fd, A3, SET);
-
             alarm(connectionParameters.timeout);
             alarmEnabled = FALSE;
             
@@ -378,7 +377,6 @@ int llwrite(const unsigned char *buf, int bufSize)
 ////////////////////////////////////////////////
 int llread(unsigned char *packet)
 {   
-
     int number_of_bytes_read = 0;
     int error = 0;
 
