@@ -17,7 +17,7 @@
 #define REJ1 0x55   //REJ1 frame: indication sent by the Receiver that it rejects an information frame number 1 (detected an error)
 #define DISC 0x0B   //DISC frame to indicate the termination of a connection
 
-#define T_SIZE 1024 //Size of the data field in the I frame
+#define T_SIZE 256 //Size of the data field in the I frame
 
 //BBC field will tbe the XOR of the A and C fields
 

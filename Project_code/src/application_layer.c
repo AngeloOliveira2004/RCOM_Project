@@ -21,7 +21,6 @@ int sequence = 0;
 void applicationLayer(const char *serialPort, const char *role, int baudRate,
                       int nTries, int timeout, const char *filename)
 {
-
     LinkLayer connectionParameters = {
         .serialPort = *serialPort,
         .role = strcmp(role, "r") == 0 ? LlTx : LlRx,
@@ -65,7 +64,6 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
                 exit(-1);
             }
 
-
             int dataSize = leftFileSize > T_SIZE ? T_SIZE : leftFileSize;
             long bytesLeft = fileSize - dataSize;
 
@@ -81,11 +79,17 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
 
                 if(llwrite(dataPacket, dataSize + dataPacket) < 0){
                     perror("Sending data packet");
-                    exit(-1);
+                    if(nTries == 0){
+                        exit(-1);
+                    }else{
+                        nTries--;
+                        continue;
+                    }
+                }else{
+                    nTries = connectionParameters.nRetransmissions;
+                    bytesLeft -= dataSize;
+                    sequence = (sequence + 1) % 99; //value between 0 and 99  
                 }
-                bytesLeft -= dataSize;
-                dataSize += T_SIZE;
-                sequence = (sequence + 1) % 255; //nao sei se é 99
             }
             
             unsigned char * endControlPacket = assembleControlPacket(filename, &fileSize, 3 , &controPacketSize);
@@ -99,7 +103,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
             break;
         case LlRx:
             
-            unsigned char * packet = (unsigned char *) malloc(1024 * sizeof(unsigned char));
+            unsigned char * packet = (unsigned char *) malloc(T_SIZE * sizeof(unsigned char));
             int packetSize = llread(packet);
 
             if(packetSize < 0){
