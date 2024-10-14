@@ -29,7 +29,8 @@ enum ReadingState{
     READING_STATE,
     STOP_STATE,
     BCC1_OK_STATE,
-    ERROR_STATE
+    ERROR_STATE,
+    DISC_RCV_STATE
 };
 
 typedef enum{

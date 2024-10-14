@@ -14,7 +14,7 @@ int timeout = 0;
 
 int sequenceNumber = 99;
 
-#define MSG_SIZE 1000
+LinkLayerRole role;
 
 ////////////////////////////////////////////////
 // LLOPEN
@@ -39,6 +39,7 @@ int llopen(LinkLayer connectionParameters)
 
     retransmitions = connectionParameters.nRetransmissions;
     timeout = connectionParameters.timeout;
+    role = connectionParameters.role;
 
     //connectionParameters.role == LlTx ? llwrite(NULL, 0) : llread(NULL);
     enum ReadingState state = START_STATE;
@@ -497,11 +498,210 @@ int llread(unsigned char *packet)
 ////////////////////////////////////////////////
 // LLCLOSE
 ////////////////////////////////////////////////
-int llclose(int showStatistics)
-{
-    char byte;
-    
+int llclose(int showStatistics){
+    enum ReadingState state = START_STATE;
 
+    int curRetransmitions = 0;
+
+    char byte;
+
+    switch (role) {
+    case LlTx:
+    
+        signal(SIGALRM, alarmHandler);
+        while (retransmitions > curRetransmitions){
+
+            if (alarmEnabled == FALSE) {
+
+                alarm(timeout);
+                sendCommandBit(1, A3, DISC);
+
+                alarmEnabled = TRUE;
+                curRetransmitions++;
+            }
+            
+            while (state != STOP_STATE && alarmEnabled == TRUE)
+            {
+                switch (state)  
+                {
+                case START_STATE:
+                    
+                    readByte(&byte);
+
+                    if (byte == FLAG)
+                    {
+                        state = FLAG_RCV_STATE;
+                    }
+
+                    break;
+                case FLAG_RCV_STATE:
+                    
+                    readByte(&byte);
+                    
+                    switch (byte)
+                    {
+                    case FLAG:
+                        state = FLAG_RCV_STATE;
+                        break;
+                    case A1:
+                        state = A_RCV_STATE;
+                        break;
+                    default:
+                        state = START_STATE;
+                        break;
+                    }
+                    break;
+                case A_RCV_STATE:
+                    
+                    readByte(&byte);
+                    switch (byte)
+                    {
+                    case DISC:
+                        state = DISC_RCV_STATE;
+                        break;
+                    case FLAG:
+                        state = FLAG_RCV_STATE;
+                        break;
+                    default:
+                        state = START_STATE;
+                        break;
+                    }
+                    break;
+                case DISC_RCV_STATE:
+                    
+                    readByte(&byte);
+                    switch (byte)
+                    {
+                    case A1 ^ DISC:
+                        state = BCC1_OK_STATE;
+                        break;
+                    case FLAG:
+                        state = FLAG_RCV_STATE;
+                        break;
+                    default:
+                        state = START_STATE;
+                        break;
+                    }
+                    break;
+                case BCC1_OK_STATE:
+                    
+                    readByte(&byte);
+                    switch (byte)
+                    {
+                    case FLAG:
+                        state = STOP_STATE;
+                        break;
+                    default:
+                        state = START_STATE;
+                        break;
+                    }
+                    break;
+                default:
+                    exit(-1);
+                    break;
+                }                    
+            }
+            
+            if(state != STOP_STATE){
+                exit(-1);
+            }
+        }
+
+        sendCommandBit(1, A3, UA);
+      
+        break;
+    case LlRx:
+        
+        while (state != STOP_STATE)
+        {
+            switch (state)
+            {
+            case START_STATE:
+                
+                readByte(&byte);
+                if (byte == FLAG)
+                {
+                    state = FLAG_RCV_STATE;
+                }
+                break;
+            case FLAG_RCV_STATE:
+                
+                readByte(&byte);
+                switch (byte)
+                {
+                case FLAG:
+                    state = FLAG_RCV_STATE;
+                    break;
+                case A3:
+                    state = A_RCV_STATE;
+                    break;
+                default:
+                    state = START_STATE;
+                    break;
+                }
+                break;
+            case A_RCV_STATE:
+                
+                readByte(&byte);
+                switch (byte)
+                {
+                case DISC:
+                    state = DISC_RCV_STATE;
+                    break;
+                case FLAG:
+                    state = FLAG_RCV_STATE;
+                    break;
+                default:
+                    state = START_STATE;
+                    break;
+                }
+                break;
+            case C_RCV_STATE:
+                
+                readByte(&byte);
+                switch (byte)
+                {
+                case A3 ^ DISC:
+                    state = BCC1_OK_STATE;
+                    break;
+                case FLAG:
+                    state = FLAG_RCV_STATE;
+                    break;
+                default:
+                    state = START_STATE;
+                    break;
+                }
+                break;
+            case BCC1_OK_STATE:
+                
+                readByte(&byte);
+                switch (byte)
+                {
+                case FLAG:
+                    state = STOP_STATE;
+                    break;
+                default:
+                    state = START_STATE;
+                    break;
+                }
+                break;  
+            default:
+                exit(-1);   
+                break;
+            }
+        }
+
+        if(state != STOP_STATE){
+            exit(-1);
+        }
+
+        sendCommandBit(0, A3, UA);
+
+        break;
+    default:
+        printf("Invalid role\n");
+        exit(-1);
+    }
 
     int clstat = closeSerialPort();
     return clstat;

@@ -149,6 +149,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
     }
 
     // Close the serial port
+    sendCommandBit(fd , A3 , DISC);
     llclose(0);
     return;
 }
