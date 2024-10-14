@@ -46,6 +46,7 @@ int llopen(LinkLayer connectionParameters)
     char byte;
     //Implement the state machine
 
+
     switch (connectionParameters.role)
     {
     case LlTx:

@@ -22,12 +22,14 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
                       int nTries, int timeout, const char *filename)
 {
     LinkLayer connectionParameters = {
-        .serialPort = {*serialPort},
+        
         .role = strcmp(role, "rx") == 0 ? LlRx : LlTx,
         .baudRate = baudRate,
         .nRetransmissions = nTries,
         .timeout = timeout
     };
+
+    strcpy(connectionParameters.serialPort, serialPort);
 
     // Open the connection
     int fd = llopen(connectionParameters);
@@ -148,8 +150,6 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
             break;
     }
 
-    // Close the serial port
-    sendCommandBit(fd , A3 , DISC);
     llclose(0);
     return;
 }

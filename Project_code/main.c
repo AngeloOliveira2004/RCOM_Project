@@ -81,8 +81,8 @@ int main(int argc, char *argv[])
            N_TRIES,
            TIMEOUT,
            filename);
-
+    
     applicationLayer(serialPort, role, baudrate, N_TRIES, TIMEOUT, filename);
-
+    
     return 0;
 }

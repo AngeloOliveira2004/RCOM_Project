@@ -26,8 +26,12 @@ int openSerialPort(const char *serialPort, int baudRate)
     // is not yet set on the serial port (changed later)
     int oflags = O_RDWR | O_NOCTTY | O_NONBLOCK;
     fd = open(serialPort, oflags);
+
+    printf("Attempting to open serial port: %s\n", serialPort);
+
     if (fd < 0)
     {
+        printf("it ends here\n");
         perror(serialPort);
         return -1;
     }
