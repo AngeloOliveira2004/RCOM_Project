@@ -292,7 +292,7 @@ int llwrite(const unsigned char *buf, int bufSize)
 
                 alarm(timeout);
                 number_of_bytes_written = writeBytes((const char *)frameBuffer, bufSize + 6);
-                printf("Number of bytes written: %i\n", number_of_bytes_written);
+                printf("Number of bytes written: %d\n", number_of_bytes_written);
 
                 if(number_of_bytes_written != bufSize + 6){
                     perror("write");
@@ -761,7 +761,7 @@ void stuffing(unsigned char * frameBuffer, const unsigned char* buffer, int* siz
     
     frameBuffer = (unsigned char *) realloc(frameBuffer, (*size + extra_size + 1) * sizeof(unsigned char));
     if (frameBuffer == NULL) {
-        // Handle allocation failure
+        printf("Error reallocating memory\n");
         return;
     }
 
@@ -788,7 +788,7 @@ void destuff(unsigned char* stuffedBuffer, int* size){
 
     int actualSize = 0;
 
-    for(int i = 0 ; i < *size-1; i++){
+    for(int i = 4 ; i < *size-1; i++){
         if(stuffedBuffer[i] == ESCAPE_OCTET){
             if(stuffedBuffer[i+1] == ESCAPED_ESCAPE_OCTET){
                 deStuffedBuffer[actualSize++] = ESCAPE_OCTET;
