@@ -259,7 +259,6 @@ int llwrite(const unsigned char *buf, int bufSize)
     int totalXOR = buf[0];
     
     enum ReadingState state = START_STATE;
-
     unsigned char * frameBuffer = (unsigned char *) malloc((bufSize + 6) * sizeof(unsigned char)); //not sure se temos de multiplicar pelo sizeof
     frameBuffer[0] = FLAG;
     frameBuffer[1] = A3;
@@ -286,12 +285,14 @@ int llwrite(const unsigned char *buf, int bufSize)
     int curRetransmitions = 0;
 
     signal(SIGALRM, alarmHandler);
+
     while (curRetransmitions < retransmitions ) {
         
         if (alarmEnabled == FALSE) {
 
                 alarm(timeout);
                 number_of_bytes_written = writeBytes((const char *)frameBuffer, bufSize + 6);
+                printf("Number of bytes written: %i\n", number_of_bytes_written);
 
                 if(number_of_bytes_written != bufSize + 6){
                     perror("write");
@@ -750,19 +751,21 @@ void stuffing(unsigned char * frameBuffer, const unsigned char* buffer, int* siz
     int j = 4;
 
     int extra_size = 0;
-    for (unsigned int i = 0; i < *size; i++) {
+    for (unsigned int i = 4; i < *size; i++) {
         if (buffer[i] == FLAG || buffer[i] == ESCAPE_OCTET) {
             extra_size++;  
         }
     }
+    printf("Extra size: %d\n", extra_size);
 
+    
     frameBuffer = (unsigned char *) realloc(frameBuffer, (*size + extra_size + 1) * sizeof(unsigned char));
     if (frameBuffer == NULL) {
         // Handle allocation failure
         return;
     }
 
-    for (unsigned int i = 0; i < *size; i++) {
+    for (unsigned int i = 4; i < *size; i++) {
         if (buffer[i] == FLAG) {
             frameBuffer[j++] = ESCAPE_OCTET;       // Escape FLAG
             frameBuffer[j++] = ESCAPED_FRAME_DELIMITER;
