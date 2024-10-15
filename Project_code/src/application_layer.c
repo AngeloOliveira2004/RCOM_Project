@@ -42,7 +42,6 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
     switch (connectionParameters.role)
     {
         case LlTx:
-
             FILE *file = fopen(filename, "r");
             if (file == NULL)
             {
@@ -52,14 +51,14 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
 
             int currFilePos = fseek(file, 0, SEEK_CUR);
 
-            fseek(file, 0, SEEK_END);
             long fileSize; 
             getFilesize(file, &fileSize);
             
             long leftFileSize = fileSize - currFilePos;
 
             int controPacketSize = 0;
-            unsigned char *controlPacket = assembleControlPacket(filename, &fileSize, 0 , &controPacketSize);
+
+            unsigned char *controlPacket = assembleControlPacket(filename, &fileSize, 1 , &controPacketSize);
 
             if(llwrite(controlPacket, controPacketSize) < 0){
                 perror("Sending control packet");
@@ -159,7 +158,7 @@ unsigned char * assembleControlPacket(const char* filename, long * filesize , in
     
     int bitsNecessary = (int) log2(*filesize + 1); // Calculate the number of bits necessary to store the file size
     int fileLenght = (int) ceil(bitsNecessary / 8.0); // Calculate the number of bytes necessary to store the file size and rounds up
-    int packetSize = 1 + 2 + 2 + filenameLen + fileLenght; // C + TLV (file size) + TLV (file name)
+    int packetSize = 1 + 4 + 2 + filenameLen + fileLenght; // C + TLV (file size) + TLV (file name)
 
     // Allocate space for the control packet
     unsigned char * controlPacket = malloc(packetSize * sizeof(unsigned char));
@@ -171,20 +170,20 @@ unsigned char * assembleControlPacket(const char* filename, long * filesize , in
 
     // 2. File Size TLV
     controlPacket[index++] = 0;       // T: file size
-    controlPacket[index++] = fileLenght;       // L: 4 bytes for the integer file size
+    controlPacket[index++] = 4;      // L: 4 bytes for the integer file size
     controlPacket[index++] = (*filesize >> 24) & 0xFF; // V: file size (MSB first)
     controlPacket[index++] = (*filesize >> 16) & 0xFF;
     controlPacket[index++] = (*filesize >> 8) & 0xFF;
     controlPacket[index++] = *filesize & 0xFF;
 
     // 3. File Name TLV
-    controlPacket[index++] = 1;                 // T: file name
-    controlPacket[index++] = filenameLen & 0xFF; // L: length of the file name string
+    controlPacket[index++] = 1;       // T: file name
+    controlPacket[index++] =  strlen(filename) + 1; // T: file name
     memcpy(&controlPacket[index], filename, filenameLen); // V: file name
     index += filenameLen;
 
     *controlPacketSize = packetSize;
-    return controlPacket; // Return the total bytes sent
+    return controlPacket;
 }
 
 int assembleDataPacket(int dataSize , int sequence, unsigned char * dataPacket) {
@@ -247,5 +246,6 @@ void getFilesize(FILE *file,long *filesize){
     fseek(file, 0, SEEK_END);
     *filesize = ftell(file);
     fseek(file, 0, SEEK_SET);
+    *filesize -= ftell(file);
     return ;
 }
