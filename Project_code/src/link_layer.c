@@ -513,6 +513,8 @@ int llread(unsigned char *packet)
         lastByte &= byte;
     }
 
+    printf("Number of bytes read: %d\n", number_of_bytes_read);
+
     destuff(packet, &number_of_bytes_read);
 
     //verificar se é duplicado
@@ -547,7 +549,10 @@ int llread(unsigned char *packet)
         }
         sendCommandBit(0, A1, REJ0);
     }
+
+    printf("Packet: ");
     
+    printf("Number of bytes read: %d\n", number_of_bytes_read);
     return number_of_bytes_read;
 }
 
@@ -864,6 +869,9 @@ void destuff(unsigned char* stuffedBuffer, int* size){
                 deStuffedBuffer[actualSize++] = FLAG;
                 i++;
             }
+        }
+        else{
+            deStuffedBuffer[actualSize++] = stuffedBuffer[i];
         }
     }
 

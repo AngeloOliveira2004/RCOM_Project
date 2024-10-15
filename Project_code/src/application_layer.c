@@ -117,7 +117,10 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
             }
 
             unsigned char * fileName = malloc(255 * sizeof(unsigned char));
-            int filenameSize = extractFileNameAndSize(packet, packetSize , fileName);
+            int filenameSize = extractFileName(packet, packetSize , fileName);
+
+            printf("Filename: %s\n", fileName);
+            printf("Filename size: %d\n", filenameSize);
 
             if(filenameSize == -1){
                 perror("Error reading name of the file");
@@ -208,39 +211,32 @@ unsigned char * getData(FILE * file , int dataSize){
     return data;
 }
 
-int extractFileNameAndSize(const unsigned char* packet, int packetSize, unsigned char* fileName) {
-    int i = 0;
+int extractFileName(const unsigned char* packet, int packetSize, unsigned char* fileName) {
     int filenameSize = 0;
-    int sizeExtracted = 0;
-    int nameExtracted = 0;
+    printf("Extracting filename\n");
 
-    while (i < packetSize) {
+    for(int i = 0 ; i < packetSize ; i++){
+        printf("Packet[%d]: 0x%02X\n", i, packet[i]);
+    }
+    // Find filename in packet
+    for (int i = 0; i < packetSize; i++) {
         if (packet[i] == 0) { // Start of filename segment
-            i++;
-            filenameSize = packet[i]; // Size of the filename
-            i++;
-
-            if (filenameSize + i > packetSize) {
-                return -1; // Error: filename size exceeds packet bounds
+            if (i + 1 >= packetSize) {
+                return -1; // Error: packet ends after filename marker
+            }
+            filenameSize = packet[i + 1]; // Filename size
+            if (i + 2 + filenameSize > packetSize) {
+                return -1; // Error: filename exceeds packet bounds
             }
 
-            // Copy filename
-            memcpy(fileName, &packet[i], filenameSize);
-            fileName[filenameSize] = '\0'; // Null-terminate
-            i += filenameSize;
-            nameExtracted = 1;
-            sizeExtracted = 1;
-        } 
-        if (sizeExtracted && nameExtracted) {
-            break; // Both file name and size are extracted
+            // Copy filename and null-terminate
+            memcpy(fileName, &packet[i + 2], filenameSize);
+            fileName[filenameSize] = '\0';
+            return 0; // Success
         }
     }
 
-    if (!sizeExtracted || !nameExtracted) {
-        return -1; // Error: incomplete packet data
-    }
-
-    return filenameSize; // Success, return the size of the filename
+    return -1; // Error: filename segment not found
 }
 
 void getFilesize(FILE *file,long *filesize){
