@@ -257,9 +257,13 @@ int llwrite(const unsigned char *buf, int bufSize)
     int number_of_bytes_written = 0;
     int frameNumber = 0;
     int totalXOR = buf[0];
+
+    alarmEnabled = FALSE;
+    alarmCount = 0;
     
     enum ReadingState state = START_STATE;
     unsigned char * frameBuffer = (unsigned char *) malloc((bufSize + 6) * sizeof(unsigned char)); //not sure se temos de multiplicar pelo sizeof
+    
     frameBuffer[0] = FLAG;
     frameBuffer[1] = A3;
     frameBuffer[2] = frameNumber == 0 ? C0 : C1;
@@ -282,31 +286,31 @@ int llwrite(const unsigned char *buf, int bufSize)
     frameBuffer[bufSize + 1] = totalXOR;
     frameBuffer[bufSize + 2] = FLAG;
 
-    int curRetransmitions = 0;
+    int curRetransmitions = retransmitions;
+
+    char byte = 0x00;
 
     signal(SIGALRM, alarmHandler);
-
-    while (curRetransmitions < retransmitions ) {
+    while (curRetransmitions > 0 && state != STOP_STATE) {
         
-        if (alarmEnabled == FALSE) {
 
-                alarm(timeout);
-                number_of_bytes_written = writeBytes((const char *)frameBuffer, bufSize + 6);
-                printf("Number of bytes written: %d\n", number_of_bytes_written);
+        number_of_bytes_written = writeBytes((const char *)frameBuffer, bufSize + 6);
+        printf("Number of bytes written: %d\n", number_of_bytes_written);
 
-                if(number_of_bytes_written != bufSize + 6){
+        if(number_of_bytes_written != bufSize + 6){
                     perror("write");
                     exit(-1);
-                }
-                
-                alarmEnabled = TRUE;
-                curRetransmitions++;
         }
 
-        while(alarmEnabled == TRUE && state != STOP_STATE ){
-            char byte;
-            int number_of_bytes_read = readByte(&byte);
+        alarm(timeout);
+        alarmEnabled = FALSE;
+        
+        while(alarmEnabled == FALSE && state != STOP_STATE ){
             
+            int number_of_bytes_read = readByte(&byte);
+
+            if(byte != 0x00) printf("byte: 0x%02X\n", byte);
+
             if(number_of_bytes_read < 1){
                 continue;
             }
@@ -368,6 +372,8 @@ int llwrite(const unsigned char *buf, int bufSize)
         if(state == STOP_STATE){
             return number_of_bytes_written;
         }
+
+        curRetransmitions--;
     }
     
     return -1;
