@@ -59,7 +59,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
             int controPacketSize = 0;
 
             unsigned char *controlPacket = assembleControlPacket(filename, &fileSize, 1 , &controPacketSize);
-
+            
             if(llwrite(controlPacket, controPacketSize) < 0){
                 perror("Sending control packet");
                 exit(-1);
@@ -108,6 +108,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
         case LlRx:
             
             unsigned char * packet = (unsigned char *) malloc(T_SIZE * sizeof(unsigned char));
+            printf("Waiting for control packet\n");
             int packetSize = llread(packet);
 
             if(packetSize < 0){
