@@ -11,6 +11,7 @@ int alarmEnabled = FALSE;
 int alarmCount = 0;
 int retransmitions = 0;
 int timeout = 0;
+int frameNumber = 0;
 
 int sequenceNumber = 99;
 int curRetransmissions = 3;
@@ -243,7 +244,6 @@ int llopen(LinkLayer connectionParameters)
 int llwrite(const unsigned char *buf, int bufSize)
 {
     int number_of_bytes_written = 0;
-    int frameNumber = 0;
 
     alarmEnabled = FALSE;
     alarmCount = 0;
@@ -291,7 +291,7 @@ int llwrite(const unsigned char *buf, int bufSize)
 
     int curRetransmitions = retransmitions;
 
-    char byte = 0x00;
+    unsigned char byte = 0x00;
 
     signal(SIGALRM, alarmHandler);
     while (curRetransmitions > 0 && state != STOP_STATE) {
@@ -308,15 +308,20 @@ int llwrite(const unsigned char *buf, int bufSize)
 
         alarm(timeout);
         alarmEnabled = FALSE;
-        
+        int i = 10;
         while(alarmEnabled == FALSE && state != STOP_STATE ){
             
-            int number_of_bytes_read = readByte(&byte);
-
-            if(byte != 0x00) printf("byte: 0x%02X\n", byte);
+            int number_of_bytes_read = readByte((char *) &byte);
 
             if(number_of_bytes_read < 1){
                 continue;
+            }
+
+
+            if(i > 0){
+                 printf("byte: 0x%02X ", byte);
+                printf("State : %s\n" , getReadingStateName(state));
+                i--;   
             }
 
             switch (state) {
@@ -327,7 +332,7 @@ int llwrite(const unsigned char *buf, int bufSize)
                 }
                 break;
             case FLAG_RCV_STATE:
-                if (byte == A3)
+                if (byte == A1 || byte == RR1)
                 {
                     state = A_RCV_STATE;
                 }
@@ -342,7 +347,7 @@ int llwrite(const unsigned char *buf, int bufSize)
                 }
                 break;
             case A_RCV_STATE:
-                if (byte == (A3 ^ (frameNumber == 0 ? C0 : C1)))
+                if (byte == (frameNumber == 0 ? RR1 : RR0))
                 {
                     state = C_RCV_STATE;
                 }
@@ -352,10 +357,24 @@ int llwrite(const unsigned char *buf, int bufSize)
                 }
                 else
                 {
+                    printf("byte: 0x%02X\n", byte);
+                    printf("frameNumber: %d\n", frameNumber);
                     state = ERROR_STATE; 
                 }
                 break;
             case C_RCV_STATE:
+                if (byte == (A1 ^ (frameNumber == 0 ? RR1 : RR0)))
+                {
+                    
+                    frameNumber = frameNumber == 0 ? 1 : 0;
+                    state = BCC_OK_STATE;
+                }
+                else
+                {
+                    state = START_STATE;
+                }
+                break;
+            case BCC_OK_STATE:
                 if (byte == FLAG)
                 {
                     state = STOP_STATE;
@@ -443,6 +462,7 @@ int llread(unsigned char *packet)
         case A_RCV_STATE:
 
             if(byte == C0 || byte == C1){
+                cByte = byte;
                 state = C_RCV_STATE;
             } else if (byte == FLAG) {
                 state = FLAG_RCV_STATE;
@@ -496,19 +516,26 @@ int llread(unsigned char *packet)
     destuff(packet, &number_of_bytes_read);
 
     //verificar se é duplicado
-    int frameNumber = C0 == cByte ? 0 : 1;
-
+    unsigned char frameNumber = 0;
+    printf("CByte: 0x%02X\n", cByte);
+    if(cByte == 0){
+        frameNumber = 1;
+    }else{
+        frameNumber = 0;
+    }
+    printf("FrameNumber: %d\n", frameNumber);
     if(sequenceNumber == packet[1]){
-            memset(packet, 0, number_of_bytes_read);
-            sendCommandBit(0, A1, frameNumber == 0 ? RR1 : RR0);
-            return 0;
+        memset(packet, 0, number_of_bytes_read);
+        sendCommandBit(0, A1, frameNumber == 0 ? RR1 : RR0);
+        return 0;
     }else{
         sequenceNumber = packet[1];
     }
     
     if (error == 0) {
-        
-        if(frameNumber == 0){
+        printf("No error\n");
+        if(frameNumber == 1){
+            printf("Frame number 1\n");
             sendCommandBit(0, A1, RR1);
         }
         sendCommandBit(0, A1, RR0); 
