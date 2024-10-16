@@ -250,7 +250,7 @@ int llwrite(const unsigned char *buf, int bufSize)
     alarmCount = 0;
     
     enum ReadingState state = START_STATE;
-    unsigned char * frameBuffer = malloc((2*bufSize + 7) * sizeof(unsigned char)); //not sure se temos de multiplicar pelo sizeof
+    unsigned char * frameBuffer = malloc((2*bufSize + 7) * sizeof(unsigned char));
     
     frameBuffer[0] = FLAG;
     frameBuffer[1] = A3;
@@ -407,12 +407,8 @@ int llread(unsigned char *packet)
     int error = 0;
 
     enum ReadingState state = START_STATE;
-    unsigned char byte = 0x00 , cByte = 0x00 , lastByte = 0x00;
+    unsigned char byte = 0x00 , cByte = 0x00;
 
-    FILE * file = fopen("logReceiver.txt", "w");
-    fclose(file);
-
-    printf("Reading\n");
     while (state != STOP_STATE)
     {
         
@@ -474,36 +470,20 @@ int llread(unsigned char *packet)
             {
                 printf("Found flag\n");
 
-                printf("Before Destuffing\n");
-                for (size_t i = 0; i < number_of_bytes_read; i++)
-                {
-                    printf("Packet[%ld]: 0x%02X\n", i, packet[i]);
+                unsigned char *destuffedPacket = destuff(packet, &number_of_bytes_read);
+
+                int bcc2 = destuffedPacket[0];
+                for (unsigned int i = 1; i < number_of_bytes_read - 1; i++) {
+                    bcc2 ^= destuffedPacket[i];
                 }
 
-                unsigned char * destuffedPacket = destuff(packet, &number_of_bytes_read);
-
-                printf("After Destuffing\n");
-                for (size_t i = 0; i < number_of_bytes_read; i++)
-                {
-                    printf("Packet[%ld]: 0x%02X\n", i, destuffedPacket[i]);
-                }
-
-                int bcc2 = packet[0];
-                
-                printf("LAST BYTE: 0x%02X\n", lastByte);
-
-                for(unsigned int i = 1;i < number_of_bytes_read-1; i++){
-                    printf("Packet[%d]: 0x%02X\n", i, destuffedPacket[i]);
-                    bcc2 ^= packet[i];
-                }
-
-                printf("Lats byte: 0x%02X\n", bcc2);
-
-                if(lastByte == bcc2){
+                if (destuffedPacket[number_of_bytes_read - 1] == bcc2) {
                     state = STOP_STATE;
-                }else{
-                    packet[number_of_bytes_read++] = byte;
+                } else {
+                    memset(packet, 0, number_of_bytes_read);
+                    number_of_bytes_read = 0;
                 }
+                free(destuffedPacket);
 
             }else {
                 packet[number_of_bytes_read++] = byte;
@@ -512,7 +492,7 @@ int llread(unsigned char *packet)
         default:
             break;
         }
-        lastByte = byte;
+        
     }
 
     if(packet[0] != 2){
