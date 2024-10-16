@@ -74,6 +74,8 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
 
             while (bytesLeft > 0)
             {   
+                printf("Bytes left: %ld\n", bytesLeft);
+                
                 dataSize = bytesLeft > T_SIZE ? T_SIZE : bytesLeft;
 
                 int packetSize = dataSize + 4; // Control (1) + Sequence (1) + Length (2) + Data (variable)
@@ -109,21 +111,11 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
             
             unsigned char * packet = (unsigned char *) malloc(T_SIZE * sizeof(unsigned char));
             printf("Waiting for control packet\n");
+
             int packetSize = llread(packet);
 
             if(packetSize < 0){
                 perror("Receiving control packet");
-                exit(-1);
-            }
-
-            unsigned char * fileName = malloc(255 * sizeof(unsigned char));
-            int filenameSize = extractFileName(packet, packetSize , fileName);
-
-            printf("Filename: %s\n", fileName);
-            printf("Filename size: %d\n", filenameSize);
-
-            if(filenameSize == -1){
-                perror("Error reading name of the file");
                 exit(-1);
             }
 
@@ -136,6 +128,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
 
             while(1){
                 packetSize = llread(packet);
+                
                 if(packetSize < 0){
                     perror("Receiving data packet");
                     exit(-1);
@@ -223,20 +216,9 @@ unsigned char * getData(FILE * file , int dataSize){
 int extractFileName(const unsigned char* packet, int packetSize, unsigned char* fileName) {
     int filenameSize = 0;
 
-
-    //FILE * file = fopen("logReceiver.txt", "w");
-    //fclose(file);
-    FILE * file = fopen("logReceiver.txt", "a");
-    fprintf(file, "Packet : \n" );
-    for (size_t i = 0; i < packetSize; i++)
-    {
-        fprintf(file, "0x%02X ", packet[i]);
-    }
-    fclose(file);
-
-
     printf("Extracting filename\n");
 
+    printf("Packet size: %d\n", packetSize);
     for(int i = 0 ; i < packetSize ; i++){
         printf("Packet[%d]: 0x%02X\n", i, packet[i]);
     }

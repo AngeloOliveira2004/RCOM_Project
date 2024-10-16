@@ -250,52 +250,36 @@ int llwrite(const unsigned char *buf, int bufSize)
     alarmCount = 0;
     
     enum ReadingState state = START_STATE;
-    unsigned char * frameBuffer = (unsigned char *) malloc((bufSize + 6) * sizeof(unsigned char)); //not sure se temos de multiplicar pelo sizeof
+    unsigned char * frameBuffer = malloc((2*bufSize + 7) * sizeof(unsigned char)); //not sure se temos de multiplicar pelo sizeof
     
     frameBuffer[0] = FLAG;
     frameBuffer[1] = A3;
     frameBuffer[2] = frameNumberWrite == 0 ? C0 : C1;
     frameBuffer[3] = frameBuffer[1] ^ frameBuffer[2];
 
+    unsigned char totalXOR = buf[0]; 
+    for(int i = 1; i < bufSize; i++){
+        totalXOR ^= buf[i];
+    }
+
     for (size_t i = 0; i < bufSize; i++)
     {
         frameBuffer[i + 4] = buf[i];
-    }   
-
-    unsigned char totalXOR = buf[0];
-    printf("buf[0]: 0x%02X\n", buf[0]);
-    for(int i = 1; i < bufSize; i++){
-        printf("buf[%d]: 0x%02X\n", i, buf[i]);
-        totalXOR ^= buf[i];
     }
+
+    frameBuffer[bufSize + 4] = totalXOR;
+    bufSize += 1;
     
-    unsigned char * completeBuffer = malloc((2*bufSize + 6) * sizeof(unsigned char));
+    unsigned char * completeBuffer = malloc((2*bufSize + 7) * sizeof(unsigned char));
 
     bufSize += 4;
 
+    frameBuffer[bufSize] = totalXOR;
+    
     completeBuffer = stuffing(frameBuffer, &bufSize);
 
-    bufSize += 2;
-    completeBuffer[bufSize - 2] = totalXOR;
+    bufSize += 1;
     completeBuffer[bufSize - 1] = FLAG;
-
-
-    printf("Complete packet\n");
-    for(int i = 0 ; i < bufSize ; i++){
-        printf("0x%02X ", completeBuffer[i]);
-    }
-
-    printf("bufsize: %d\n", bufSize);
-    FILE * file = fopen("logTransmitter.txt", "w");
-    fclose(file);
-    file = fopen("logTransmitter.txt", "a");
-    for (size_t i = 0; i < bufSize; i++)
-    {
-        fprintf(file , "Byte: ");
-        fprintf(file, "0x%02X \n", frameBuffer[i]);
-    }
-    fprintf(file, "\n");
-    fclose(file);
 
     int curRetransmitions = retransmitions;
 
@@ -491,18 +475,33 @@ int llread(unsigned char *packet)
             if (byte == FLAG)
             {
                 printf("Found flag\n");
-               
+
+                printf("Before Destuffing\n");
+                for (size_t i = 0; i < number_of_bytes_read; i++)
+                {
+                    printf("Packet[%ld]: 0x%02X\n", i, packet[i]);
+                }
+                
+                destuff(packet, &number_of_bytes_read);
+
+                printf("After Destuffing\n");
+                for (size_t i = 0; i < number_of_bytes_read; i++)
+                {
+                    printf("Packet[%ld]: 0x%02X\n", i, packet[i]);
+                }
 
                 int bcc2 = packet[0];
-                printf("Lats byte: 0x%02X\n", lastByte);
+                
+                printf("LAST BYTE: 0x%02X\n", lastByte);
 
                 for(unsigned int i = 1;i < number_of_bytes_read-1; i++){
                     printf("Packet[%d]: 0x%02X\n", i, packet[i]);
                     bcc2 ^= packet[i];
                 }
 
+                printf("Lats byte: 0x%02X\n", bcc2);
+
                 if(lastByte == bcc2){
-                    packet[number_of_bytes_read++] = byte;
                     state = STOP_STATE;
                 }else{
                     packet[number_of_bytes_read++] = byte;
@@ -517,8 +516,6 @@ int llread(unsigned char *packet)
         }
         lastByte = byte;
     }
-
-    destuff(packet, &number_of_bytes_read);
 
     if(packet[0] != 2){
         if (error == 0) {
@@ -892,9 +889,19 @@ void destuff(unsigned char* stuffedBuffer, int* size){
             deStuffedBuffer[actualSize++] = stuffedBuffer[i];
         }
     }
+    
+    
+    if(actualSize == *size){
+        free(deStuffedBuffer);
+        return;
+    }
+
+    printf("Actual size: %d\n", actualSize);
+    printf("Size: %d\n", *size);
 
     *size = actualSize;
-    stuffedBuffer = memcpy(stuffedBuffer, deStuffedBuffer, actualSize);
+    
+    printf("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA ERROR IN REALOC \n");
     stuffedBuffer = realloc(stuffedBuffer, actualSize);
 
     return ;
