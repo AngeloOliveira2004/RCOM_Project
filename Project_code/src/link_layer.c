@@ -276,7 +276,17 @@ int llwrite(const unsigned char *buf, int bufSize)
 
     frameBuffer[bufSize] = totalXOR;
     
+    printf("Buffer before stuffing\n");
+    for(int i = 0 ; i < bufSize; i++){
+       printf("0x%02X ", frameBuffer[i]);
+    }
+
     completeBuffer = stuffing(frameBuffer, &bufSize);
+
+    printf("Buffer after stuffing\n");
+    for(int i = 0 ; i < bufSize; i++){
+       printf("0x%02X ", completeBuffer[i]);
+    }
 
     bufSize += 1;
     completeBuffer[bufSize - 1] = FLAG;
@@ -289,7 +299,7 @@ int llwrite(const unsigned char *buf, int bufSize)
     while (curRetransmitions > 0 && state != STOP_STATE) {
         
 
-        number_of_bytes_written = writeBytes((const char *)frameBuffer, bufSize);
+        number_of_bytes_written = writeBytes((const char *)completeBuffer, bufSize);
         printf("Number of bytes written: %d\n", number_of_bytes_written);
 
         if(number_of_bytes_written != bufSize){
@@ -311,6 +321,9 @@ int llwrite(const unsigned char *buf, int bufSize)
                 continue;
             }
 
+            printf("Byte: 0x%02X\n", byte);
+            printf("State: %s\n", getReadingStateName(state));
+
             switch (state) {
             case START_STATE:
                 if (byte == FLAG)
@@ -319,7 +332,7 @@ int llwrite(const unsigned char *buf, int bufSize)
                 }
                 break;
             case FLAG_RCV_STATE:
-                if (byte == A1 || byte == RR1)
+                if (byte == A1 || byte == RR1 || byte == RR0)
                 {
                     state = A_RCV_STATE;
                 }
@@ -334,6 +347,8 @@ int llwrite(const unsigned char *buf, int bufSize)
                 }
                 break;
             case A_RCV_STATE:
+            //recebeu o AB a pedir o frame 0 logo frameNumberWrite tem de ser igual a 0
+                printf("FRAME NUMBER WRITE: %d\n", frameNumberWrite);
                 if (byte == (frameNumberWrite == 0 ? RR1 : RR0))
                 {
                     state = C_RCV_STATE;
@@ -470,20 +485,24 @@ int llread(unsigned char *packet)
             {
                 printf("Found flag\n");
 
-                unsigned char *destuffedPacket = destuff(packet, &number_of_bytes_read);
-
-                int bcc2 = destuffedPacket[0];
+                
+                number_of_bytes_read = destuff(packet, number_of_bytes_read);
+                
+                int bcc2 = packet[0];
                 for (unsigned int i = 1; i < number_of_bytes_read - 1; i++) {
-                    bcc2 ^= destuffedPacket[i];
+                    
+                    bcc2 ^= packet[i];
                 }
 
-                if (destuffedPacket[number_of_bytes_read - 1] == bcc2) {
+                
+                if (packet[number_of_bytes_read - 1] == bcc2) {
+                    
+                    printf("Packet[0]: 0x%02X\n", packet[0]);
                     state = STOP_STATE;
                 } else {
                     memset(packet, 0, number_of_bytes_read);
                     number_of_bytes_read = 0;
                 }
-                free(destuffedPacket);
 
             }else {
                 packet[number_of_bytes_read++] = byte;
@@ -493,13 +512,12 @@ int llread(unsigned char *packet)
             break;
         }
         
-    }
+    }  
 
     if(packet[0] != 2){
         if (error == 0) {
             if(frameNumberRead == 1){
                 frameNumberRead = 0;
-                printf("Frame number 1\n");
                 sendCommandBit(0, A1, RR0);
             }else{
                 frameNumberRead = 1;
@@ -529,6 +547,7 @@ int llread(unsigned char *packet)
             frameNumberRead = 0;
             sendCommandBit(0, A1, RR0);
         }
+        printf("I'm here\n");
         sendCommandBit(0, A1, RR1); 
     }
     
@@ -847,13 +866,13 @@ unsigned char * stuffing(unsigned char *frameBuffer, int* size) {
 
 
 
-unsigned char * destuff(unsigned char* stuffedBuffer, int* size){
+int destuff(unsigned char* stuffedBuffer, int size){
 
-    unsigned char* deStuffedBuffer = malloc(*size * sizeof(unsigned char));
+    unsigned char* deStuffedBuffer = malloc(size * sizeof(unsigned char));
 
     int actualSize = 0;
 
-    for(int i = 0 ; i < *size; i++){
+    for(int i = 0 ; i < size; i++){
         if(stuffedBuffer[i] == ESCAPE_OCTET){
             printf("Found escape octet\n");
             if(stuffedBuffer[i+1] == ESCAPED_ESCAPE_OCTET){
@@ -869,19 +888,23 @@ unsigned char * destuff(unsigned char* stuffedBuffer, int* size){
         }
     }
     
-    if(actualSize == *size){
+    if(actualSize == size){
         free(deStuffedBuffer);
-        return stuffedBuffer;
+        return size;
     }
 
     printf("Actual size: %d\n", actualSize);
-    printf("Size: %d\n", *size);
+    printf("Size: %d\n", size);
 
-    *size = actualSize;
-    
-    stuffedBuffer = realloc(stuffedBuffer, actualSize);
+    printf("De-stuffed buffer\n");
 
-    return deStuffedBuffer;
+    memcpy(stuffedBuffer, deStuffedBuffer, actualSize);
+
+    for(int i = 0 ; i < actualSize; i++){
+        printf("0x%02X ", deStuffedBuffer[i]);
+    }
+
+    return actualSize;
 }
 
 

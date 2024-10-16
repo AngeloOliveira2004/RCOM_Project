@@ -95,7 +95,7 @@ int countZerosFromPacket(unsigned char *packet, int packetSize);
 
 unsigned char * stuffing(unsigned char *frameBuffer, int* size);
 
-unsigned char * destuff(unsigned char* stuffedBuffer, int* size);
+int destuff(unsigned char* stuffedBuffer, int size);
 
 
 char* getReadingStateName(enum ReadingState state);
