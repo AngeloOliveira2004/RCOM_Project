@@ -87,12 +87,8 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
 
                 if(llwrite(dataPacket, dataSize) < 0){
                     perror("Sending data packet");
-                    if(nTries == 0){
-                        exit(-1);
-                    }else{
-                        nTries--;
-                        continue;
-                    }
+                    exit(-1);
+                
                 }else{
                     nTries = connectionParameters.nRetransmissions;
                     bytesLeft -= dataSize;
