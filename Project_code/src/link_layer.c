@@ -420,8 +420,6 @@ int llread(unsigned char *packet)
             continue;
         }
 
-        printf("Byte: 0x%02X ", byte);
-        printf("State: %s\n", getReadingStateName(state));
 /*
         printf("Byte: 0x%02X ", byte);
         printf("State: %s", getReadingStateName(state));
@@ -481,13 +479,13 @@ int llread(unsigned char *packet)
                 {
                     printf("Packet[%ld]: 0x%02X\n", i, packet[i]);
                 }
-                
-                destuff(packet, &number_of_bytes_read);
+
+                unsigned char * destuffedPacket = destuff(packet, &number_of_bytes_read);
 
                 printf("After Destuffing\n");
                 for (size_t i = 0; i < number_of_bytes_read; i++)
                 {
-                    printf("Packet[%ld]: 0x%02X\n", i, packet[i]);
+                    printf("Packet[%ld]: 0x%02X\n", i, destuffedPacket[i]);
                 }
 
                 int bcc2 = packet[0];
@@ -495,7 +493,7 @@ int llread(unsigned char *packet)
                 printf("LAST BYTE: 0x%02X\n", lastByte);
 
                 for(unsigned int i = 1;i < number_of_bytes_read-1; i++){
-                    printf("Packet[%d]: 0x%02X\n", i, packet[i]);
+                    printf("Packet[%d]: 0x%02X\n", i, destuffedPacket[i]);
                     bcc2 ^= packet[i];
                 }
 
@@ -833,8 +831,9 @@ unsigned char * stuffing(unsigned char *frameBuffer, int* size) {
     int extra_size = 0;
 
     for (int i = 4; i < *size; i++) {
-        printf("FrameBuffer[%d]: 0x%02X\n", i, frameBuffer[i]);
         if (frameBuffer[i] == FLAG || frameBuffer[i] == ESCAPE_OCTET) {
+            printf("Found flag or escape octet\n");
+            printf("Byte: 0x%02X\n", frameBuffer[i]);
             extra_size++;
         }
     }
@@ -868,7 +867,7 @@ unsigned char * stuffing(unsigned char *frameBuffer, int* size) {
 
 
 
-void destuff(unsigned char* stuffedBuffer, int* size){
+unsigned char * destuff(unsigned char* stuffedBuffer, int* size){
 
     unsigned char* deStuffedBuffer = malloc(*size * sizeof(unsigned char));
 
@@ -890,10 +889,9 @@ void destuff(unsigned char* stuffedBuffer, int* size){
         }
     }
     
-    
     if(actualSize == *size){
         free(deStuffedBuffer);
-        return;
+        return stuffedBuffer;
     }
 
     printf("Actual size: %d\n", actualSize);
@@ -901,10 +899,9 @@ void destuff(unsigned char* stuffedBuffer, int* size){
 
     *size = actualSize;
     
-    printf("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA ERROR IN REALOC \n");
     stuffedBuffer = realloc(stuffedBuffer, actualSize);
 
-    return ;
+    return deStuffedBuffer;
 }
 
 
