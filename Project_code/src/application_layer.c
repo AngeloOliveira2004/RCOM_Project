@@ -59,10 +59,14 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
             int controPacketSize = 0;
 
             unsigned char *controlPacket = assembleControlPacket(filename, &fileSize, 1 , &controPacketSize);
+
+            for(int i = 0 ; i < controPacketSize ; i++){
+                printf("ControlPacket[%d]: 0x%02X\n", i, controlPacket[i]);
+            }
             
             if(llwrite(controlPacket, controPacketSize) < 0){
                 perror("Sending control packet");
-                exit(-1);
+                exit(0);
             }
 
             int dataSize = leftFileSize > T_SIZE ? T_SIZE : leftFileSize;
@@ -187,6 +191,15 @@ unsigned char * assembleControlPacket(const char* filename, long * filesize , in
     index += filenameLen;
 
     *controlPacketSize = packetSize;
+
+    FILE * file = fopen("logReceiver.txt", "w");
+    fclose(file);
+    file = fopen("logReceiver.txt", "a");
+    for(int i = 0 ; i < packetSize ; i++){
+        fprintf(file, "ControlPacket[%d]: 0x%02X\n", i, controlPacket[i]);
+    }
+    fclose(file);
+
     return controlPacket;
 }
 
@@ -213,6 +226,19 @@ unsigned char * getData(FILE * file , int dataSize){
 
 int extractFileName(const unsigned char* packet, int packetSize, unsigned char* fileName) {
     int filenameSize = 0;
+
+
+    //FILE * file = fopen("logReceiver.txt", "w");
+    //fclose(file);
+    FILE * file = fopen("logReceiver.txt", "a");
+    fprintf(file, "Packet : \n" );
+    for (size_t i = 0; i < packetSize; i++)
+    {
+        fprintf(file, "0x%02X ", packet[i]);
+    }
+    fclose(file);
+
+
     printf("Extracting filename\n");
 
     for(int i = 0 ; i < packetSize ; i++){

@@ -11,7 +11,8 @@ int alarmEnabled = FALSE;
 int alarmCount = 0;
 int retransmitions = 0;
 int timeout = 0;
-int frameNumber = 0;
+int frameNumberWrite = 0;
+int frameNumberRead = 0;
 
 int sequenceNumber = 99;
 int curRetransmissions = 3;
@@ -253,7 +254,7 @@ int llwrite(const unsigned char *buf, int bufSize)
     
     frameBuffer[0] = FLAG;
     frameBuffer[1] = A3;
-    frameBuffer[2] = frameNumber == 0 ? C0 : C1;
+    frameBuffer[2] = frameNumberWrite == 0 ? C0 : C1;
     frameBuffer[3] = frameBuffer[1] ^ frameBuffer[2];
 
     for (size_t i = 0; i < bufSize; i++)
@@ -261,21 +262,28 @@ int llwrite(const unsigned char *buf, int bufSize)
         frameBuffer[i + 4] = buf[i];
     }   
 
-    unsigned char totalXOR = buf[4];
-    printf("totalXOR: 0x%02X\n", totalXOR);
-    for(int i = 5; i < bufSize; i++){
+    unsigned char totalXOR = buf[0];
+    printf("buf[0]: 0x%02X\n", buf[0]);
+    for(int i = 1; i < bufSize; i++){
         printf("buf[%d]: 0x%02X\n", i, buf[i]);
         totalXOR ^= buf[i];
     }
-    printf("totalXOR: 0x%02X\n", totalXOR);
-    //stuffing
-    stuffing(frameBuffer, buf, &bufSize);
+    
+    unsigned char * completeBuffer = malloc((2*bufSize + 6) * sizeof(unsigned char));
 
-    //finish assembling the frame
-    bufSize += 6;
+    bufSize += 4;
 
-    frameBuffer[bufSize - 2] = totalXOR;
-    frameBuffer[bufSize - 1] = FLAG;
+    completeBuffer = stuffing(frameBuffer, &bufSize);
+
+    bufSize += 2;
+    completeBuffer[bufSize - 2] = totalXOR;
+    completeBuffer[bufSize - 1] = FLAG;
+
+
+    printf("Complete packet\n");
+    for(int i = 0 ; i < bufSize ; i++){
+        printf("0x%02X ", completeBuffer[i]);
+    }
 
     printf("bufsize: %d\n", bufSize);
     FILE * file = fopen("logTransmitter.txt", "w");
@@ -308,20 +316,15 @@ int llwrite(const unsigned char *buf, int bufSize)
 
         alarm(timeout);
         alarmEnabled = FALSE;
-        int i = 10;
+
+        state = START_STATE;
+
         while(alarmEnabled == FALSE && state != STOP_STATE ){
             
             int number_of_bytes_read = readByte((char *) &byte);
 
             if(number_of_bytes_read < 1){
                 continue;
-            }
-
-
-            if(i > 0){
-                 printf("byte: 0x%02X ", byte);
-                printf("State : %s\n" , getReadingStateName(state));
-                i--;   
             }
 
             switch (state) {
@@ -347,7 +350,7 @@ int llwrite(const unsigned char *buf, int bufSize)
                 }
                 break;
             case A_RCV_STATE:
-                if (byte == (frameNumber == 0 ? RR1 : RR0))
+                if (byte == (frameNumberWrite == 0 ? RR1 : RR0))
                 {
                     state = C_RCV_STATE;
                 }
@@ -357,16 +360,13 @@ int llwrite(const unsigned char *buf, int bufSize)
                 }
                 else
                 {
-                    printf("byte: 0x%02X\n", byte);
-                    printf("frameNumber: %d\n", frameNumber);
                     state = ERROR_STATE; 
                 }
                 break;
             case C_RCV_STATE:
-                if (byte == (A1 ^ (frameNumber == 0 ? RR1 : RR0)))
+                if (byte == (A1 ^ (frameNumberWrite == 0 ? RR1 : RR0)))
                 {
-                    
-                    frameNumber = frameNumber == 0 ? 1 : 0;
+                    frameNumberWrite = frameNumberWrite == 0 ? 1 : 0;
                     state = BCC_OK_STATE;
                 }
                 else
@@ -384,6 +384,17 @@ int llwrite(const unsigned char *buf, int bufSize)
                     state = START_STATE;
                 }
                 break;
+            case REJ0_STATE:
+                alarmEnabled = FALSE;
+                frameNumberWrite = frameNumberWrite == 0 ? 1 : 0;
+                state = STOP_STATE;
+            
+                break;
+            case REJ1_STATE:
+                alarmEnabled = FALSE;
+                frameNumberWrite = frameNumberWrite == 0 ? 1 : 0;
+                state = STOP_STATE;
+                break;
             case ERROR_STATE:
                 alarmEnabled = FALSE;
                 break;
@@ -399,6 +410,7 @@ int llwrite(const unsigned char *buf, int bufSize)
         curRetransmitions--;
     }
     
+    printf("Error sending frame\n");
     return -1;
 }
 
@@ -424,15 +436,9 @@ int llread(unsigned char *packet)
             continue;
         }
 
-        byte = (int) byte;
-        byte = byte & 0x000000FF;
-
-
-
-        if(byte > 0xFF){
-            printf("Mega Byte: 0x%02X\n", byte);
-            continue;
-        }
+        printf("Byte: 0x%02X ", byte);
+        printf("State: %s\n", getReadingStateName(state));
+/*
         printf("Byte: 0x%02X ", byte);
         printf("State: %s", getReadingStateName(state));
         printf("Nmbr of bytes read: %d\n", number_of_bytes_read);
@@ -440,7 +446,7 @@ int llread(unsigned char *packet)
         file = fopen("logReceiver.txt", "a");
         fprintf(file, "Byte: 0x%02X\n", byte);
         fclose(file);
-
+*/
         switch (state)
         {
         case START_STATE:
@@ -472,7 +478,6 @@ int llread(unsigned char *packet)
             }
             break;
         case C_RCV_STATE:
-            //printf("Byte: 0x%02X\n"  , byte);
             if(byte == (A3 ^ cByte)){
                 state = READING_STATE;
             } else if (byte == FLAG){
@@ -489,14 +494,15 @@ int llread(unsigned char *packet)
                
 
                 int bcc2 = packet[0];
-                printf("BCC2: 0x%02X\n", bcc2);
-                for(unsigned int i = 1;i < number_of_bytes_read - 5;i++){
+                printf("Lats byte: 0x%02X\n", lastByte);
+
+                for(unsigned int i = 1;i < number_of_bytes_read-1; i++){
                     printf("Packet[%d]: 0x%02X\n", i, packet[i]);
                     bcc2 ^= packet[i];
                 }
-                printf("BCC2: 0x%02X\n", bcc2);
-                printf("Last byte: 0x%02X\n", lastByte);
+
                 if(lastByte == bcc2){
+                    packet[number_of_bytes_read++] = byte;
                     state = STOP_STATE;
                 }else{
                     packet[number_of_bytes_read++] = byte;
@@ -509,50 +515,55 @@ int llread(unsigned char *packet)
         default:
             break;
         }
-        lastByte = 0xff;
-        lastByte &= byte;
+        lastByte = byte;
     }
-
-    printf("Number of bytes read: %d\n", number_of_bytes_read);
 
     destuff(packet, &number_of_bytes_read);
 
-    //verificar se é duplicado
-    unsigned char frameNumber = 0;
-    printf("CByte: 0x%02X\n", cByte);
-    if(cByte == 0){
-        frameNumber = 1;
-    }else{
-        frameNumber = 0;
+    if(packet[0] != 2){
+        if (error == 0) {
+            if(frameNumberRead == 1){
+                frameNumberRead = 0;
+                printf("Frame number 1\n");
+                sendCommandBit(0, A1, RR0);
+            }else{
+                frameNumberRead = 1;
+                sendCommandBit(0, A1, RR1); 
+            }
+        }
+    
+        if(error == 1){
+            if(frameNumberRead == 1){
+                sendCommandBit(0, A1, REJ1);
+            }else{
+                sendCommandBit(0, A1, REJ0);
+            }
+        }
     }
-    printf("FrameNumber: %d\n", frameNumber);
+    
     if(sequenceNumber == packet[1]){
         memset(packet, 0, number_of_bytes_read);
-        sendCommandBit(0, A1, frameNumber == 0 ? RR1 : RR0);
+        sendCommandBit(0, A1, frameNumberRead == 0 ? RR1 : RR0);
         return 0;
     }else{
         sequenceNumber = packet[1];
     }
     
     if (error == 0) {
-        printf("No error\n");
-        if(frameNumber == 1){
-            printf("Frame number 1\n");
-            sendCommandBit(0, A1, RR1);
+        if(frameNumberRead == 1){
+            frameNumberRead = 0;
+            sendCommandBit(0, A1, RR0);
         }
-        sendCommandBit(0, A1, RR0); 
+        sendCommandBit(0, A1, RR1); 
     }
     
     if(error == 1){
-        if(frameNumber == 1){
+        if(frameNumberRead == 1){
             sendCommandBit(0, A1, REJ1);
         }
         sendCommandBit(0, A1, REJ0);
     }
-
-    printf("Packet: ");
     
-    printf("Number of bytes read: %d\n", number_of_bytes_read);
     return number_of_bytes_read;
 }
 
@@ -818,40 +829,46 @@ FrameType parsePacketHeader(const unsigned char *packet) {
 }
 
 
-void stuffing(unsigned char * frameBuffer, const unsigned char* buffer, int* size){
-    printf("stuffing \n");
+unsigned char * stuffing(unsigned char *frameBuffer, int* size) {
+    printf("Stuffing\n");
+
     int j = 4;
-
     int extra_size = 0;
-    for (unsigned int i = 4; i < *size; i++) {
-        if (buffer[i] == FLAG || buffer[i] == ESCAPE_OCTET) {
-            extra_size++;  
+
+    for (int i = 4; i < *size; i++) {
+        printf("FrameBuffer[%d]: 0x%02X\n", i, frameBuffer[i]);
+        if (frameBuffer[i] == FLAG || frameBuffer[i] == ESCAPE_OCTET) {
+            extra_size++;
         }
     }
+
     printf("Extra size: %d\n", extra_size);
-
-    frameBuffer = (unsigned char *) realloc(frameBuffer, (*size + extra_size + 1) * sizeof(unsigned char));
-    if (frameBuffer == NULL) {
-        printf("Error reallocating memory\n");
-        return;
+    
+    if(extra_size == 0){
+        return frameBuffer;
     }
 
-    for (unsigned int i = 4; i < *size; i++) {
-        if (buffer[i] == FLAG) {
-            printf("Found FLAG\n");
-            frameBuffer[j++] = ESCAPE_OCTET;       // Escape FLAG
-            frameBuffer[j++] = ESCAPED_FRAME_DELIMITER;
-        } else if (buffer[i] == ESCAPE_OCTET) {
-            frameBuffer[j++] = ESCAPE_OCTET;       // Escape ESCAPE_OCTET
-            frameBuffer[j++] = ESCAPED_ESCAPE_OCTET;
+    unsigned char * completeBuffer = (unsigned char *) malloc((*size + extra_size) * sizeof(unsigned char));
+
+    memcpy(completeBuffer, frameBuffer, 4);
+
+    for (int i = 4; i < *size; i++) {
+        if (frameBuffer[i] == FLAG) {
+            completeBuffer[j++] = ESCAPE_OCTET;
+            completeBuffer[j++] = ESCAPED_FRAME_DELIMITER;
+        } else if (frameBuffer[i] == ESCAPE_OCTET) {
+            completeBuffer[j++] = ESCAPE_OCTET;
+            completeBuffer[j++] = ESCAPED_ESCAPE_OCTET;
         } else {
-            frameBuffer[j++] = buffer[i];         // Copy byte
+            completeBuffer[j++] = frameBuffer[i];
         }
     }
 
-    *size = j;
-    return ; 
+    *size += extra_size;    
+    
+    return completeBuffer;
 }
+
 
 
 void destuff(unsigned char* stuffedBuffer, int* size){
@@ -860,8 +877,9 @@ void destuff(unsigned char* stuffedBuffer, int* size){
 
     int actualSize = 0;
 
-    for(int i = 4 ; i < *size-1; i++){
+    for(int i = 0 ; i < *size; i++){
         if(stuffedBuffer[i] == ESCAPE_OCTET){
+            printf("Found escape octet\n");
             if(stuffedBuffer[i+1] == ESCAPED_ESCAPE_OCTET){
                 deStuffedBuffer[actualSize++] = ESCAPE_OCTET;
                 i++;

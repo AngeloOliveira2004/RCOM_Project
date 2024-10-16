@@ -30,7 +30,9 @@ enum ReadingState{
     STOP_STATE,
     BCC1_OK_STATE,
     ERROR_STATE,
-    DISC_RCV_STATE
+    DISC_RCV_STATE,
+    REJ0_STATE,
+    REJ1_STATE 
 };
 
 typedef enum{
@@ -91,7 +93,7 @@ int sendCommandBit(int fd , unsigned char A , unsigned char C);
 
 int countZerosFromPacket(unsigned char *packet, int packetSize);
 
-void stuffing(unsigned char * frameBuffer, const unsigned char* buffer, int* size);
+unsigned char * stuffing(unsigned char *frameBuffer, int* size);
 void destuff(unsigned char* stuffedBuffer, int* size);
 
 
