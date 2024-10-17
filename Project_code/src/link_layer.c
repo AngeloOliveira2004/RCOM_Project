@@ -253,12 +253,8 @@ int llwrite(const unsigned char *buf, int bufSize)
 
 
     FILE *file = fopen("logTransmitter.txt", "a");
-    FILE *pinguin = fopen("pinguim_teste.gif", "w");
-    fclose(pinguin);
-    pinguin = fopen("pinguim_teste.gif", "a");
     for(int i = 0 ; i < bufSize ; i++){
         fprintf(file, "ControlPacket[%d]: 0x%02X\n", i, buf[i]);
-        fwrite(&buf[i], sizeof(unsigned char), 1, pinguin);
     }
     
     fclose(file);
