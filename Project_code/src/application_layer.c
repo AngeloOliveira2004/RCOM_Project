@@ -48,7 +48,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
     switch (connectionParameters.role)
     {
         case LlTx:
-            FILE *file = fopen(filename, "r");
+            FILE *file = fopen(filename, "rb");
             if (file == NULL) {
                 perror("Opening file");
                 exit(-1);
@@ -114,7 +114,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
                 exit(-1);
             }
 
-            FILE * Newfile = fopen(filename, "w+"); //create with w+ for rw access
+            FILE * Newfile = fopen(filename, "wb+"); //create with w+ for rw access
 
             if(Newfile == NULL){
                 perror("Opening file");
@@ -133,16 +133,36 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
                     break;
                 }
 
+                if(packet[0] != 2){
+                   continue;    
+                }
+
                 FILE *file2 = fopen("logReceiver.txt", "a");
                 for(int i = 0 ; i < packetSize ; i++){
                     fprintf(file2, "ControlPacket[%d]: 0x%02X\n", i, packet[i]);
                 }
+
                 
                 fclose(file2);
 
-                fwrite(packet , sizeof(unsigned char), packetSize , Newfile);
+                if (packetSize <= 0) {
+                    fprintf(stderr, "Invalid packet size\n");
+                    exit(-1);
+                }
 
-                
+
+                 // I don't want to write the first 4 bytes of the packet
+
+
+
+                if (fwrite(packet + 4, sizeof(unsigned char), packetSize - 4, Newfile) != packetSize - 4) {
+                    perror("Error writing to file");
+                    exit(-1);
+                }
+
+                fflush(Newfile);
+
+                memset(packet, 0, 2 * T_SIZE);
             }
 
             printf("End of file\n");
