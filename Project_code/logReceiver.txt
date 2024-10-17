@@ -1,4 +1,4 @@
-ControlPacket[0]: 0x01
+ControlPacket[0]: 0x03
 ControlPacket[1]: 0x00
 ControlPacket[2]: 0x04
 ControlPacket[3]: 0x00

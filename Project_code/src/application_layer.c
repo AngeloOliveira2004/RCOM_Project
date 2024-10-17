@@ -128,21 +128,17 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
 
             while(1){
                 packetSize = llread(packet);
-                
-                printf("CUrrently were here\n");
 
                 if(packetSize < 0){
                     perror("Receiving data packet");
                     exit(-1);
                 }
 
-                if(packet[1] == 3){
+                if(packet[0] == 3){
                     break;
                 }
 
                 fwrite(packet + 4, sizeof(unsigned char), packetSize - 4, Newfile);
-
-                printf("Does this write\n");
             }
 
             break;

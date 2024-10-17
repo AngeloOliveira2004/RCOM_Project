@@ -275,18 +275,8 @@ int llwrite(const unsigned char *buf, int bufSize)
     bufSize += 4;
 
     frameBuffer[bufSize] = totalXOR;
-    
-    printf("Buffer before stuffing\n");
-    for(int i = 0 ; i < bufSize; i++){
-       printf("0x%02X ", frameBuffer[i]);
-    }
 
     completeBuffer = stuffing(frameBuffer, &bufSize);
-
-    printf("Buffer after stuffing\n");
-    for(int i = 0 ; i < bufSize; i++){
-       printf("0x%02X ", completeBuffer[i]);
-    }
 
     bufSize += 1;
     completeBuffer[bufSize - 1] = FLAG;
@@ -321,9 +311,6 @@ int llwrite(const unsigned char *buf, int bufSize)
                 continue;
             }
 
-            printf("Byte: 0x%02X\n", byte);
-            printf("State: %s\n", getReadingStateName(state));
-
             switch (state) {
             case START_STATE:
                 if (byte == FLAG)
@@ -348,7 +335,6 @@ int llwrite(const unsigned char *buf, int bufSize)
                 break;
             case A_RCV_STATE:
             //recebeu o AB a pedir o frame 0 logo frameNumberWrite tem de ser igual a 0
-                printf("FRAME NUMBER WRITE: %d\n", frameNumberWrite);
                 if (byte == (frameNumberWrite == 0 ? RR1 : RR0))
                 {
                     state = C_RCV_STATE;
@@ -428,16 +414,7 @@ int llread(unsigned char *packet)
         if(readByte((char *) &byte) < 1){
             continue;
         }
-
-/*
-        printf("Byte: 0x%02X ", byte);
-        printf("State: %s", getReadingStateName(state));
-        printf("Nmbr of bytes read: %d\n", number_of_bytes_read);
         
-        file = fopen("logReceiver.txt", "a");
-        fprintf(file, "Byte: 0x%02X\n", byte);
-        fclose(file);
-*/
         switch (state)
         {
         case START_STATE:
@@ -481,7 +458,6 @@ int llread(unsigned char *packet)
         case READING_STATE:
             if (byte == FLAG)
             {
-                printf("Found flag\n");
 
                 
                 number_of_bytes_read = destuff(packet, number_of_bytes_read);
@@ -494,8 +470,6 @@ int llread(unsigned char *packet)
 
                 
                 if (packet[number_of_bytes_read - 1] == bcc2) {
-                    
-                    printf("Packet[0]: 0x%02X\n", packet[0]);
                     state = STOP_STATE;
                 } else {
                     memset(packet, 0, number_of_bytes_read);
@@ -795,20 +769,15 @@ FrameType parsePacketHeader(const unsigned char *packet) {
 
 
 unsigned char * stuffing(unsigned char *frameBuffer, int* size) {
-    printf("Stuffing\n");
 
     int j = 4;
     int extra_size = 0;
 
     for (int i = 4; i < *size; i++) {
         if (frameBuffer[i] == FLAG || frameBuffer[i] == ESCAPE_OCTET) {
-            printf("Found flag or escape octet\n");
-            printf("Byte: 0x%02X\n", frameBuffer[i]);
             extra_size++;
         }
     }
-
-    printf("Extra size: %d\n", extra_size);
     
     if(extra_size == 0){
         return frameBuffer;
@@ -845,7 +814,6 @@ int destuff(unsigned char* stuffedBuffer, int size){
 
     for(int i = 0 ; i < size; i++){
         if(stuffedBuffer[i] == ESCAPE_OCTET){
-            printf("Found escape octet\n");
             if(stuffedBuffer[i+1] == ESCAPED_ESCAPE_OCTET){
                 deStuffedBuffer[actualSize++] = ESCAPE_OCTET;
                 i++;
@@ -864,16 +832,7 @@ int destuff(unsigned char* stuffedBuffer, int size){
         return size;
     }
 
-    printf("Actual size: %d\n", actualSize);
-    printf("Size: %d\n", size);
-
-    printf("De-stuffed buffer\n");
-
     memcpy(stuffedBuffer, deStuffedBuffer, actualSize);
-
-    for(int i = 0 ; i < actualSize; i++){
-        printf("0x%02X ", deStuffedBuffer[i]);
-    }
 
     return actualSize;
 }
