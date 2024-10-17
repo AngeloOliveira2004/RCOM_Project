@@ -387,6 +387,9 @@ int llwrite(const unsigned char *buf, int bufSize)
         }
 
         if(state == STOP_STATE){
+            if(number_of_bytes_written == 26){
+                printf("Frame sent successfully\n");
+            }
             return number_of_bytes_written;
         }
 
@@ -512,7 +515,7 @@ int llread(unsigned char *packet)
 int llclose(int showStatistics){
     enum ReadingState state = START_STATE;
 
-    int curRetransmitions = 0;
+    int curRetransmitions = retransmitions;
 
     char byte;
 
@@ -520,25 +523,26 @@ int llclose(int showStatistics){
     case LlTx:
     
         signal(SIGALRM, alarmHandler);
-        while (retransmitions > curRetransmitions){
-
-            if (alarmEnabled == FALSE) {
-
-                alarm(timeout);
-                sendCommandBit(1, A3, DISC);
-
-                alarmEnabled = TRUE;
-                curRetransmitions++;
-            }
+        while (curRetransmitions > 0 && state != STOP_STATE){
             
-            while (state != STOP_STATE && alarmEnabled == TRUE)
+            sendCommandBit(1, A3, DISC);
+            alarm(timeout);
+            alarmEnabled = FALSE;
+            
+            while (state != STOP_STATE && alarmEnabled == FALSE)
             {
+                
+                if(readByte((char *)&byte) < 1){
+                    continue;
+                }
+
+                printf("Byte: %x\n", byte);
+                printf("State: %s\n", getReadingStateName(state));
+
                 switch (state)  
                 {
                 case START_STATE:
-                    
-                    readByte(&byte);
-
+                
                     if (byte == FLAG)
                     {
                         state = FLAG_RCV_STATE;
@@ -547,7 +551,6 @@ int llclose(int showStatistics){
                     break;
                 case FLAG_RCV_STATE:
                     
-                    readByte(&byte);
                     
                     switch (byte)
                     {
@@ -564,7 +567,6 @@ int llclose(int showStatistics){
                     break;
                 case A_RCV_STATE:
                     
-                    readByte(&byte);
                     switch (byte)
                     {
                     case DISC:
@@ -580,11 +582,10 @@ int llclose(int showStatistics){
                     break;
                 case DISC_RCV_STATE:
                     
-                    readByte(&byte);
                     switch (byte)
                     {
                     case A1 ^ DISC:
-                        state = BCC1_OK_STATE;
+                        state = BCC_OK_STATE;
                         break;
                     case FLAG:
                         state = FLAG_RCV_STATE;
@@ -594,12 +595,12 @@ int llclose(int showStatistics){
                         break;
                     }
                     break;
-                case BCC1_OK_STATE:
+                case BCC_OK_STATE:
                     
-                    readByte(&byte);
                     switch (byte)
                     {
                     case FLAG:
+
                         state = STOP_STATE;
                         break;
                     default:
@@ -625,19 +626,21 @@ int llclose(int showStatistics){
         
         while (state != STOP_STATE)
         {
+            if(readByte((char *)&byte) < 1){
+                    continue;
+            }
+
             switch (state)
             {
             case START_STATE:
-                
-                readByte(&byte);
+            
                 if (byte == FLAG)
                 {
                     state = FLAG_RCV_STATE;
                 }
                 break;
             case FLAG_RCV_STATE:
-                
-                readByte(&byte);
+            
                 switch (byte)
                 {
                 case FLAG:
@@ -653,7 +656,6 @@ int llclose(int showStatistics){
                 break;
             case A_RCV_STATE:
                 
-                readByte(&byte);
                 switch (byte)
                 {
                 case DISC:
@@ -667,13 +669,12 @@ int llclose(int showStatistics){
                     break;
                 }
                 break;
-            case C_RCV_STATE:
+            case DISC_RCV_STATE:
                 
-                readByte(&byte);
                 switch (byte)
                 {
                 case A3 ^ DISC:
-                    state = BCC1_OK_STATE;
+                    state = BCC_OK_STATE;
                     break;
                 case FLAG:
                     state = FLAG_RCV_STATE;
@@ -683,9 +684,90 @@ int llclose(int showStatistics){
                     break;
                 }
                 break;
-            case BCC1_OK_STATE:
+            case BCC_OK_STATE:
                 
-                readByte(&byte);
+                switch (byte)
+                {
+                case FLAG:
+                    state = STOP_STATE;
+                    break;
+                default:
+                    state = START_STATE;
+                    break;
+                }
+                break;  
+            default:
+                exit(-1);   
+                break;
+            }
+        }
+
+        sendCommandBit(1, A1, DISC);
+
+        state = START_STATE;
+
+        while (state != STOP_STATE)
+        {
+            if(readByte((char *)&byte) < 1){
+                    continue;
+            }
+
+            switch (state)
+            {
+            case START_STATE:
+            
+                if (byte == FLAG)
+                {
+                    state = FLAG_RCV_STATE;
+                }
+                break;
+            case FLAG_RCV_STATE:
+            
+                switch (byte)
+                {
+                case FLAG:
+                    state = FLAG_RCV_STATE;
+                    break;
+                case A3:
+                    state = A_RCV_STATE;
+                    break;
+                default:
+                    state = START_STATE;
+                    break;
+                }
+                break;
+            case A_RCV_STATE:
+                
+                switch (byte)
+                {
+                case UA:
+                    state = C_RCV_STATE;
+                    break;
+                case FLAG:
+                    state = FLAG_RCV_STATE;
+                    break;
+                default:
+                    state = START_STATE;
+                    break;
+                }
+                break;
+            case C_RCV_STATE:
+                
+                switch (byte)
+                {
+                case A3 ^ UA:
+                    state = BCC_OK_STATE;
+                    break;
+                case FLAG:
+                    state = FLAG_RCV_STATE;
+                    break;
+                default:
+                    state = START_STATE;
+                    break;
+                }
+                break;
+            case BCC_OK_STATE:
+                
                 switch (byte)
                 {
                 case FLAG:
@@ -703,16 +785,17 @@ int llclose(int showStatistics){
         }
 
         if(state != STOP_STATE){
+            
             exit(-1);
         }
-
-        sendCommandBit(0, A3, UA);
 
         break;
     default:
         printf("Invalid role\n");
         exit(-1);
     }
+
+    printf("Connection closed\n");
 
     int clstat = closeSerialPort();
     return clstat;
@@ -724,9 +807,11 @@ int sendCommandBit(int fd , unsigned char A , unsigned char C){
     int bytes_written = writeBytes((const char *)message, 5);
 
     if (bytes_written != 5) {
+        printf("Error writing to serial port\n");
         perror("write");
         exit(-1);
-    }          
+    }   
+           
     return bytes_written;
 }
 
@@ -850,7 +935,6 @@ char* getReadingStateName(enum ReadingState state) {
         case DISCONNECT_STATE: return "DISCONNECT_STATE";
         case READING_STATE:    return "READING_STATE";
         case STOP_STATE:       return "STOP_STATE";
-        case BCC1_OK_STATE:    return "BCC1_OK_STATE";
         case ERROR_STATE:      return "ERROR_STATE";
         case DISC_RCV_STATE:   return "DISC_RCV_STATE";
         default:               return "UNKNOWN_STATE";

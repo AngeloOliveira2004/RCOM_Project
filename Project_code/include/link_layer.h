@@ -28,7 +28,6 @@ enum ReadingState{
     DISCONNECT_STATE,
     READING_STATE,
     STOP_STATE,
-    BCC1_OK_STATE,
     ERROR_STATE,
     DISC_RCV_STATE,
     REJ0_STATE,

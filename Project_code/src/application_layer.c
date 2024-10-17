@@ -59,10 +59,6 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
             int controPacketSize = 0;
 
             unsigned char *controlPacket = assembleControlPacket(filename, &fileSize, 1 , &controPacketSize);
-
-            for(int i = 0 ; i < controPacketSize ; i++){
-                printf("ControlPacket[%d]: 0x%02X\n", i, controlPacket[i]);
-            }
             
             if(llwrite(controlPacket, controPacketSize) < 0){
                 perror("Sending control packet");
@@ -92,6 +88,9 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
                     exit(-1);
                 
                 }else{
+                    if(bytesLeft == 26){
+                        printf("Last packet\n");
+                    }
                     nTries = connectionParameters.nRetransmissions;
                     bytesLeft -= dataSize;
                     sequence = (sequence + 1) % 99; //value between 0 and 99  
@@ -104,13 +103,12 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
                 exit(-1);
             }
 
-            llclose(0);
+            printf("End of transmission\n");
 
             break;
         case LlRx:
             
             unsigned char * packet = (unsigned char *) malloc(2*T_SIZE * sizeof(unsigned char));
-            printf("Waiting for control packet\n");
 
             int packetSize = llread(packet);
 
@@ -141,12 +139,17 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
                 fwrite(packet + 4, sizeof(unsigned char), packetSize - 4, Newfile);
             }
 
+            printf("End of file\n");
+
+            fclose(Newfile);
+
             break;
         default:
             break;
     }
 
     llclose(0);
+
     return;
 }
 
