@@ -14,7 +14,7 @@ int timeout = 0;
 int frameNumberWrite = 0;
 int frameNumberRead = 0;
 
-int sequenceNumber = 99;
+int sequenceNumber = 0;
 int curRetransmissions = 3;
 
 LinkLayerRole role;
@@ -254,7 +254,7 @@ int llwrite(const unsigned char *buf, int bufSize)
     
     frameBuffer[0] = FLAG;
     frameBuffer[1] = A3;
-    frameBuffer[2] = frameNumberWrite == 0 ? C0 : C1;
+    frameBuffer[2] = C0;
     frameBuffer[3] = frameBuffer[1] ^ frameBuffer[2];
 
     unsigned char totalXOR = buf[0]; 
@@ -332,7 +332,7 @@ int llwrite(const unsigned char *buf, int bufSize)
                 }
                 break;
             case FLAG_RCV_STATE:
-                if (byte == A1 || byte == RR1 || byte == RR0)
+                if (byte == A1)
                 {
                     state = A_RCV_STATE;
                 }
@@ -365,7 +365,6 @@ int llwrite(const unsigned char *buf, int bufSize)
             case C_RCV_STATE:
                 if (byte == (A1 ^ (frameNumberWrite == 0 ? RR1 : RR0)))
                 {
-                    frameNumberWrite = frameNumberWrite == 0 ? 1 : 0;
                     state = BCC_OK_STATE;
                 }
                 else
@@ -376,6 +375,7 @@ int llwrite(const unsigned char *buf, int bufSize)
             case BCC_OK_STATE:
                 if (byte == FLAG)
                 {
+                    frameNumberWrite = frameNumberWrite == 0 ? 1 : 0;
                     state = STOP_STATE;
                 }
                 else
@@ -385,13 +385,11 @@ int llwrite(const unsigned char *buf, int bufSize)
                 break;
             case REJ0_STATE:
                 alarmEnabled = FALSE;
-                frameNumberWrite = frameNumberWrite == 0 ? 1 : 0;
                 state = STOP_STATE;
             
                 break;
             case REJ1_STATE:
                 alarmEnabled = FALSE;
-                frameNumberWrite = frameNumberWrite == 0 ? 1 : 0;
                 state = STOP_STATE;
                 break;
             case ERROR_STATE:
@@ -513,42 +511,15 @@ int llread(unsigned char *packet)
         }
         
     }  
-
-    if(packet[0] != 2){
-        if (error == 0) {
-            if(frameNumberRead == 1){
-                frameNumberRead = 0;
-                sendCommandBit(0, A1, RR0);
-            }else{
-                frameNumberRead = 1;
-                sendCommandBit(0, A1, RR1); 
-            }
-        }
-    
-        if(error == 1){
-            if(frameNumberRead == 1){
-                sendCommandBit(0, A1, REJ1);
-            }else{
-                sendCommandBit(0, A1, REJ0);
-            }
-        }
-    }
-    
-    if(sequenceNumber == packet[1]){
-        memset(packet, 0, number_of_bytes_read);
-        sendCommandBit(0, A1, frameNumberRead == 0 ? RR1 : RR0);
-        return 0;
-    }else{
-        sequenceNumber = packet[1];
-    }
     
     if (error == 0) {
         if(frameNumberRead == 1){
             frameNumberRead = 0;
             sendCommandBit(0, A1, RR0);
+        }else{
+            frameNumberRead = 1;
+            sendCommandBit(0, A1, RR1);
         }
-        printf("I'm here\n");
-        sendCommandBit(0, A1, RR1); 
     }
     
     if(error == 1){
