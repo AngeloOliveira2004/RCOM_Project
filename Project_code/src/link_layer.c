@@ -248,6 +248,20 @@ int llwrite(const unsigned char *buf, int bufSize)
 
     alarmEnabled = FALSE;
     alarmCount = 0;
+
+    int originalSize = bufSize;
+
+
+    FILE *file = fopen("logTransmitter.txt", "a");
+    FILE *pinguin = fopen("pinguim_teste.gif", "w");
+    fclose(pinguin);
+    pinguin = fopen("pinguim_teste.gif", "a");
+    for(int i = 0 ; i < bufSize ; i++){
+        fprintf(file, "ControlPacket[%d]: 0x%02X\n", i, buf[i]);
+        fwrite(&buf[i], sizeof(unsigned char), 1, pinguin);
+    }
+    
+    fclose(file);
     
     enum ReadingState state = START_STATE;
     unsigned char * frameBuffer = malloc((2*bufSize + 7) * sizeof(unsigned char));
@@ -288,7 +302,6 @@ int llwrite(const unsigned char *buf, int bufSize)
     signal(SIGALRM, alarmHandler);
     while (curRetransmitions > 0 && state != STOP_STATE) {
         
-
         number_of_bytes_written = writeBytes((const char *)completeBuffer, bufSize);
         printf("Number of bytes written: %d\n", number_of_bytes_written);
 
@@ -387,10 +400,8 @@ int llwrite(const unsigned char *buf, int bufSize)
         }
 
         if(state == STOP_STATE){
-            if(number_of_bytes_written == 26){
-                printf("Frame sent successfully\n");
-            }
-            return number_of_bytes_written;
+           
+            return originalSize;
         }
 
         curRetransmitions--;
@@ -461,19 +472,17 @@ int llread(unsigned char *packet)
         case READING_STATE:
             if (byte == FLAG)
             {
-
-                
                 number_of_bytes_read = destuff(packet, number_of_bytes_read);
                 
                 int bcc2 = packet[0];
                 for (unsigned int i = 1; i < number_of_bytes_read - 1; i++) {
-                    
                     bcc2 ^= packet[i];
                 }
-
                 
                 if (packet[number_of_bytes_read - 1] == bcc2) {
+                    number_of_bytes_read -= 1;
                     state = STOP_STATE;
+                    
                 } else {
                     memset(packet, 0, number_of_bytes_read);
                     number_of_bytes_read = 0;
@@ -506,6 +515,7 @@ int llread(unsigned char *packet)
         sendCommandBit(0, A1, REJ0);
     }
     
+
     return number_of_bytes_read;
 }
 
@@ -564,7 +574,7 @@ int llclose(int showStatistics){
                         state = START_STATE;
                         break;
                     }
-                    break;
+                    break;  
                 case A_RCV_STATE:
                     
                     switch (byte)
@@ -813,43 +823,6 @@ int sendCommandBit(int fd , unsigned char A , unsigned char C){
     }   
            
     return bytes_written;
-}
-
-
-FrameType parsePacketHeader(const unsigned char *packet) {
-
-    unsigned char controlByte = packet[2];
-    unsigned char bcc = packet[3];
-
-    // Check BCC (Byte Control Check)
-    if (bcc != (A1 ^ controlByte)) {
-        return Error_Frame;
-    }
-
-    // Determine frame type based on the control byte
-    switch (controlByte) {
-        case SET:
-        case UA:
-            return S_Frame;
-            break;
-        case DISC:
-            return Disc_Frame;
-            break;
-        case RR0:
-            return RR0_Frame;
-            break;
-        case RR1:
-            return RR1_Frame;
-            break;
-        case REJ0:
-            return REJ0_Frame;
-            break;
-        case REJ1:
-            return REJ1_Frame;
-            break;
-        default:
-            return Error_Frame; 
-        }
 }
 
 

@@ -1,21 +1,11 @@
-def read_file(file_path):
-    with open(file_path, 'r') as file:
-        return file.readlines()
-
-def print_differences(file1_lines, file2_lines):
-    differences = [line for line in file1_lines if line not in file2_lines]
-    differences += [line for line in file2_lines if line not in file1_lines]
-    for diff in differences:
-        print(diff.strip())
+def write_numbers_to_file(file_path):
+    with open(file_path, 'w') as file:
+        for number in range(1, 101):
+            file.write(f"{number}\n")
 
 def main():
-    file1_path = 'test1.txt'
-    file2_path = 'test2.txt'
-    
-    file1_lines = read_file(file1_path)
-    file2_lines = read_file(file2_path)
-    
-    print_differences(file1_lines, file2_lines)
+    file_path = 'teste.txt'
+    write_numbers_to_file(file_path)
 
 if __name__ == "__main__":
     main()

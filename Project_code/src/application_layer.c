@@ -20,7 +20,13 @@ int sequence = 0;
 
 void applicationLayer(const char *serialPort, const char *role, int baudRate,
                       int nTries, int timeout, const char *filename)
-{
+{   
+
+    FILE *file = fopen("logReceiver.txt", "w");
+    fclose(file);
+    file = fopen("logTransmitter.txt", "w");
+    fclose(file);
+
     LinkLayer connectionParameters = {
 
         .role = strcmp(role, "rx") == 0 ? LlRx : LlTx,
@@ -43,59 +49,50 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
     {
         case LlTx:
             FILE *file = fopen(filename, "r");
-            if (file == NULL)
-            {
+            if (file == NULL) {
                 perror("Opening file");
                 exit(-1);
             }
 
-            int currFilePos = fseek(file, 0, SEEK_CUR);
-
-            long fileSize; 
+            long fileSize;
             getFilesize(file, &fileSize);
-            
-            long leftFileSize = fileSize - currFilePos;
 
+            long bytesLeft = fileSize;
             int controPacketSize = 0;
-
             unsigned char *controlPacket = assembleControlPacket(filename, &fileSize, 1 , &controPacketSize);
-            
-            if(llwrite(controlPacket, controPacketSize) < 0){
+
+            if (llwrite(controlPacket, controPacketSize) < 0) {
                 perror("Sending control packet");
-                exit(0);
+                exit(-1);
             }
 
-            int dataSize = leftFileSize > T_SIZE ? T_SIZE : leftFileSize;
-            long bytesLeft = fileSize - dataSize;
-
-            while (bytesLeft > 0)
-            {   
+            while (bytesLeft > 0) {   
                 printf("Bytes left: %ld\n", bytesLeft);
-                
-                dataSize = bytesLeft > T_SIZE ? T_SIZE : bytesLeft;
 
-                int packetSize = dataSize + 4; // Control (1) + Sequence (1) + Length (2) + Data (variable)
+                int dataSize = (bytesLeft > T_SIZE) ? T_SIZE : bytesLeft;
+                int packetSize = dataSize + 4;
+
                 unsigned char dataPacket[packetSize];
-                
-                assembleDataPacket(packetSize , sequence , dataPacket);
-                
-                unsigned char *data = getData(file, dataSize);
+                assembleDataPacket(dataSize, sequence, dataPacket);
 
-                memcpy(dataPacket + 4, data, dataSize);
+                if (fread(dataPacket + 4, sizeof(unsigned char), dataSize, file) != dataSize) {
+                    if (feof(file)) {
+                        fprintf(stderr, "End of file reached prematurely.\n");
+                    } else {
+                        perror("fread error");
+                    }
+                    exit(-1);
+                }
 
-                if(llwrite(dataPacket, dataSize) < 0){
+                if (llwrite(dataPacket, packetSize) < 0) {
                     perror("Sending data packet");
                     exit(-1);
-                
-                }else{
-                    if(bytesLeft == 26){
-                        printf("Last packet\n");
-                    }
-                    nTries = connectionParameters.nRetransmissions;
-                    bytesLeft -= dataSize;
-                    sequence = (sequence + 1) % 99; //value between 0 and 99  
                 }
+
+                bytesLeft -= dataSize;
+                sequence = (sequence + 1) % 99;
             }
+
             
             unsigned char * endControlPacket = assembleControlPacket(filename, &fileSize, 3 , &controPacketSize);
             if(llwrite(endControlPacket, controPacketSize) < 0){
@@ -136,7 +133,16 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
                     break;
                 }
 
-                fwrite(packet + 4, sizeof(unsigned char), packetSize - 4, Newfile);
+                FILE *file2 = fopen("logReceiver.txt", "a");
+                for(int i = 0 ; i < packetSize ; i++){
+                    fprintf(file2, "ControlPacket[%d]: 0x%02X\n", i, packet[i]);
+                }
+                
+                fclose(file2);
+
+                fwrite(packet , sizeof(unsigned char), packetSize , Newfile);
+
+                
             }
 
             printf("End of file\n");
@@ -183,14 +189,6 @@ unsigned char * assembleControlPacket(const char* filename, long * filesize , in
     index += filenameLen;
 
     *controlPacketSize = packetSize;
-
-    FILE * file = fopen("logReceiver.txt", "w");
-    fclose(file);
-    file = fopen("logReceiver.txt", "a");
-    for(int i = 0 ; i < packetSize ; i++){
-        fprintf(file, "ControlPacket[%d]: 0x%02X\n", i, controlPacket[i]);
-    }
-    fclose(file);
 
     return controlPacket;
 }
