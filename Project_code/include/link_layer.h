@@ -99,4 +99,6 @@ int destuff(unsigned char* stuffedBuffer, int size);
 
 char* getReadingStateName(enum ReadingState state);
 
+int transitionNextState(char *byte, enum ReadingState *state, int A, int C);
+
 #endif // _LINK_LAYER_H_

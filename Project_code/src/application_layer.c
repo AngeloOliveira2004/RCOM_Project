@@ -234,36 +234,6 @@ unsigned char * getData(FILE * file , int dataSize){
     return data;
 }
 
-int extractFileName(const unsigned char* packet, int packetSize, unsigned char* fileName) {
-    int filenameSize = 0;
-
-    printf("Extracting filename\n");
-
-    printf("Packet size: %d\n", packetSize);
-    for(int i = 0 ; i < packetSize ; i++){
-        printf("Packet[%d]: 0x%02X\n", i, packet[i]);
-    }
-    // Find filename in packet
-    for (int i = 0; i < packetSize; i++) {
-        if (packet[i] == 0) { // Start of filename segment
-            if (i + 1 >= packetSize) {
-                return -1; // Error: packet ends after filename marker
-            }
-            filenameSize = packet[i + 1]; // Filename size
-            if (i + 2 + filenameSize > packetSize) {
-                return -1; // Error: filename exceeds packet bounds
-            }
-
-            // Copy filename and null-terminate
-            memcpy(fileName, &packet[i + 2], filenameSize);
-            fileName[filenameSize] = '\0';
-            return 0; // Success
-        }
-    }
-
-    return -1; // Error: filename segment not found
-}
-
 void getFilesize(FILE *file,long *filesize){
     fseek(file, 0, SEEK_END);
     *filesize = ftell(file);

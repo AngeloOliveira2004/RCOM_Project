@@ -36,8 +36,7 @@ int llopen(LinkLayer connectionParameters)
 {
     int fd = openSerialPort(connectionParameters.serialPort, connectionParameters.baudRate); // Open the serial port with the parameters defined in the struct
 
-    if (fd < 0)
-    {
+    if (fd < 0){
         return -1;
     }
 
@@ -69,15 +68,13 @@ int llopen(LinkLayer connectionParameters)
                 switch (state)  
                 {
                 case START_STATE:
-                    if (byte == FLAG)
-                    {
+                    if (byte == FLAG){
                         state = FLAG_RCV_STATE;
                     }
 
                     break;
                 case FLAG_RCV_STATE:
-                    switch (byte)
-                    {
+                    switch (byte){
                     case FLAG:
                         state = FLAG_RCV_STATE;
                         break;
@@ -90,8 +87,7 @@ int llopen(LinkLayer connectionParameters)
                     }
                     break;
                 case A_RCV_STATE:
-                    switch (byte)
-                    {
+                    switch (byte){
                     case UA:
                         state = C_RCV_STATE;
                         break;
@@ -106,8 +102,7 @@ int llopen(LinkLayer connectionParameters)
                 case C_RCV_STATE:
                     
                    
-                    switch (byte)
-                    {
+                    switch (byte){
                     case A1 ^ UA:
                         state = BCC_OK_STATE;
                         break;
@@ -121,8 +116,7 @@ int llopen(LinkLayer connectionParameters)
                     break;
                 case BCC_OK_STATE:
                     
-                    switch (byte)
-                    {
+                    switch (byte){
                     case FLAG:
                         state = STOP_STATE;
                         break;
@@ -156,14 +150,12 @@ int llopen(LinkLayer connectionParameters)
             switch (state)
             {
             case START_STATE:
-                if (byte == FLAG)
-                {
+                if (byte == FLAG){
                     state = FLAG_RCV_STATE;
                 }
                 break;
             case FLAG_RCV_STATE:
-                switch (byte)
-                {
+                switch (byte){
                 case FLAG:
                     state = FLAG_RCV_STATE;
                     break;
@@ -177,8 +169,7 @@ int llopen(LinkLayer connectionParameters)
                 break;
             case A_RCV_STATE:
                 
-                switch (byte)
-                {
+                switch (byte){
                 case SET:
                     state = C_RCV_STATE;
                     break;
@@ -192,8 +183,7 @@ int llopen(LinkLayer connectionParameters)
                 break;
             case C_RCV_STATE:
                 
-                switch (byte)
-                {
+                switch (byte){
                 case A3 ^ SET:
                     state = BCC_OK_STATE;
                     break;
@@ -207,8 +197,7 @@ int llopen(LinkLayer connectionParameters)
                 break;
             case BCC_OK_STATE:
                 
-                switch (byte)
-                {
+                switch (byte){
                 case FLAG:
                     state = STOP_STATE;
                     break;
@@ -322,59 +311,47 @@ int llwrite(const unsigned char *buf, int bufSize)
 
             switch (state) {
             case START_STATE:
-                if (byte == FLAG)
-                {
+                if (byte == FLAG){
                     state = FLAG_RCV_STATE;
                 }
                 break;
             case FLAG_RCV_STATE:
-                if (byte == A1)
-                {
+                if (byte == A1){
                     state = A_RCV_STATE;
                 }
-                else if (byte == FLAG)
-                {
+                else if (byte == FLAG){
                     state = FLAG_RCV_STATE;
                 }
-                else
-                {
-                    state = ERROR_STATE; 
-
+                else{
+                    state = ERROR_STATE;
                 }
                 break;
             case A_RCV_STATE:
             //recebeu o AB a pedir o frame 0 logo frameNumberWrite tem de ser igual a 0
-                if (byte == (frameNumberWrite == 0 ? RR1 : RR0))
-                {
+                if (byte == (frameNumberWrite == 0 ? RR1 : RR0)){
                     state = C_RCV_STATE;
                 }
-                else if (byte == FLAG)
-                {
+                else if (byte == FLAG){
                     state = FLAG_RCV_STATE;
                 }
-                else
-                {
+                else{
                     state = ERROR_STATE; 
                 }
                 break;
             case C_RCV_STATE:
-                if (byte == (A1 ^ (frameNumberWrite == 0 ? RR1 : RR0)))
-                {
+                if (byte == (A1 ^ (frameNumberWrite == 0 ? RR1 : RR0))){
                     state = BCC_OK_STATE;
                 }
-                else
-                {
+                else{
                     state = START_STATE;
                 }
                 break;
             case BCC_OK_STATE:
-                if (byte == FLAG)
-                {
+                if (byte == FLAG){
                     frameNumberWrite = frameNumberWrite == 0 ? 1 : 0;
                     state = STOP_STATE;
                 }
-                else
-                {
+                else{
                     state = START_STATE;
                 }
                 break;
@@ -560,9 +537,6 @@ int llclose(int showStatistics){
                     
                     switch (byte)
                     {
-                    case FLAG:
-                        state = FLAG_RCV_STATE;
-                        break;
                     case A1:
                         state = A_RCV_STATE;
                         break;
@@ -578,9 +552,6 @@ int llclose(int showStatistics){
                     case DISC:
                         state = DISC_RCV_STATE;
                         break;
-                    case FLAG:
-                        state = FLAG_RCV_STATE;
-                        break;
                     default:
                         state = START_STATE;
                         break;
@@ -593,9 +564,6 @@ int llclose(int showStatistics){
                     case A1 ^ DISC:
                         state = BCC_OK_STATE;
                         break;
-                    case FLAG:
-                        state = FLAG_RCV_STATE;
-                        break;
                     default:
                         state = START_STATE;
                         break;
@@ -606,7 +574,6 @@ int llclose(int showStatistics){
                     switch (byte)
                     {
                     case FLAG:
-
                         state = STOP_STATE;
                         break;
                     default:
@@ -635,77 +602,8 @@ int llclose(int showStatistics){
             if(readByte((char *)&byte) < 1){
                     continue;
             }
-
-            switch (state)
-            {
-            case START_STATE:
             
-                if (byte == FLAG)
-                {
-                    state = FLAG_RCV_STATE;
-                }
-                break;
-            case FLAG_RCV_STATE:
-            
-                switch (byte)
-                {
-                case FLAG:
-                    state = FLAG_RCV_STATE;
-                    break;
-                case A3:
-                    state = A_RCV_STATE;
-                    break;
-                default:
-                    state = START_STATE;
-                    break;
-                }
-                break;
-            case A_RCV_STATE:
-                
-                switch (byte)
-                {
-                case DISC:
-                    state = DISC_RCV_STATE;
-                    break;
-                case FLAG:
-                    state = FLAG_RCV_STATE;
-                    break;
-                default:
-                    state = START_STATE;
-                    break;
-                }
-                break;
-            case DISC_RCV_STATE:
-                
-                switch (byte)
-                {
-                case A3 ^ DISC:
-                    state = BCC_OK_STATE;
-                    break;
-                case FLAG:
-                    state = FLAG_RCV_STATE;
-                    break;
-                default:
-                    state = START_STATE;
-                    break;
-                }
-                break;
-            case BCC_OK_STATE:
-                
-                switch (byte)
-                {
-                case FLAG:
-                    state = STOP_STATE;
-                    break;
-                default:
-                    state = START_STATE;
-                    break;
-                }
-                break;  
-            default:
-                exit(-1);   
-                break;
-            }
+            transitionNextState(&byte, &state, A3, DISC);
         }
 
         sendCommandBit(1, A1, DISC);
@@ -718,76 +616,7 @@ int llclose(int showStatistics){
                     continue;
             }
 
-            switch (state)
-            {
-            case START_STATE:
-            
-                if (byte == FLAG)
-                {
-                    state = FLAG_RCV_STATE;
-                }
-                break;
-            case FLAG_RCV_STATE:
-            
-                switch (byte)
-                {
-                case FLAG:
-                    state = FLAG_RCV_STATE;
-                    break;
-                case A3:
-                    state = A_RCV_STATE;
-                    break;
-                default:
-                    state = START_STATE;
-                    break;
-                }
-                break;
-            case A_RCV_STATE:
-                
-                switch (byte)
-                {
-                case UA:
-                    state = C_RCV_STATE;
-                    break;
-                case FLAG:
-                    state = FLAG_RCV_STATE;
-                    break;
-                default:
-                    state = START_STATE;
-                    break;
-                }
-                break;
-            case C_RCV_STATE:
-                
-                switch (byte)
-                {
-                case A3 ^ UA:
-                    state = BCC_OK_STATE;
-                    break;
-                case FLAG:
-                    state = FLAG_RCV_STATE;
-                    break;
-                default:
-                    state = START_STATE;
-                    break;
-                }
-                break;
-            case BCC_OK_STATE:
-                
-                switch (byte)
-                {
-                case FLAG:
-                    state = STOP_STATE;
-                    break;
-                default:
-                    state = START_STATE;
-                    break;
-                }
-                break;  
-            default:
-                exit(-1);   
-                break;
-            }
+            transitionNextState(&byte, &state, A3, UA);
         }
 
         if(state != STOP_STATE){
@@ -891,7 +720,6 @@ int destuff(unsigned char* stuffedBuffer, int size){
     return actualSize;
 }
 
-
 char* getReadingStateName(enum ReadingState state) {
     switch (state) {
         case START_STATE:      return "START_STATE";
@@ -908,4 +736,44 @@ char* getReadingStateName(enum ReadingState state) {
         case DISC_RCV_STATE:   return "DISC_RCV_STATE";
         default:               return "UNKNOWN_STATE";
     }
+}
+
+
+int transitionNextState(char *byte, enum ReadingState *state, int A, int C) {
+    switch (*state) {
+        case START_STATE:
+
+            if (*byte == FLAG) *state = FLAG_RCV_STATE;
+            break;
+
+        case FLAG_RCV_STATE:
+
+            if (*byte == A) *state = A_RCV_STATE;
+            else if (*byte == FLAG) *state = FLAG_RCV_STATE;
+            else *state = ERROR_STATE;
+            break;
+
+        case A_RCV_STATE:
+
+            if (*byte == C) *state = C_RCV_STATE;
+            else if(*byte == FLAG) *state = FLAG_RCV_STATE;
+            else *state = START_STATE;
+            break;
+
+        case C_RCV_STATE:
+
+            if (*byte == (A ^ C)) *state = BCC_OK_STATE;
+            else *state = START_STATE;
+            break;
+
+        case BCC_OK_STATE:
+
+            if (*byte == FLAG) *state = STOP_STATE;
+            else *state = START_STATE;
+            break;
+
+        default:
+            break;
+    }
+    return 0;
 }

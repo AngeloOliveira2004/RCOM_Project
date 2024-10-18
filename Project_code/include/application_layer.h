@@ -26,12 +26,8 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
 
 
 unsigned char * assembleControlPacket(const char* filename, long * filesize , int startEnd , int * controlPacketSize);
-
 int assembleDataPacket(int dataSize , int sequence, unsigned char * dataPacket);
 unsigned char * getData(FILE * file , int dataSize);
-
-
-int extractFileName(const unsigned char* packet, int packetSize, unsigned char* fileName);
 void getFilesize(FILE *file,long *filesize);
 
 #endif // _APPLICATION_LAYER_H_
