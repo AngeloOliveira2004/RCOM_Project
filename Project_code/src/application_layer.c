@@ -93,6 +93,8 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
                 sequence = (sequence + 1) % 99;
 
                 // create a progress bar based on bytesLeft and fileSize
+                system("clear");
+                printf("\n\n\n\n\n\n");
                 printf("\rProgress: [");
                 for (int i = 0; i < 50; i++) {
                     if (i < (50 * (1 - (bytesLeft / (float) fileSize)))) {
@@ -125,6 +127,12 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
 
             long bytesLeftReceiver = 0;
 
+            if(packet[0] == 1){
+                fileSizeReceiver = (packet[3] << 24) | (packet[4] << 16) | (packet[5] << 8) | packet[6];
+                bytesLeftReceiver = fileSizeReceiver;
+                printf("File size: %ld\n", fileSizeReceiver);
+            }
+
             if(packetSize < 0){
                 perror("Receiving control packet");
                 exit(-1);
@@ -145,12 +153,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
                     exit(-1);
                 }
 
-                if(packet[0] == 1){
-                    fileSizeReceiver = (packet[2] << 24) | (packet[3] << 16) | (packet[4] << 8) | packet[5];
-                    bytesLeftReceiver = fileSizeReceiver;
-                    printf("File size: %ld\n", fileSizeReceiver);
-                }
-                else if(packet[0] == 3) break;
+                if(packet[0] == 3) break;
                 else if(packet[0] != 2) continue;   
 
                 if (packetSize <= 0) {
@@ -164,7 +167,8 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
                 }
 
                 bytesLeftReceiver -= (packetSize - 4);
-
+                system("clear");
+                printf("\n\n\n\n\n\n");
                 printf("\rProgress: [");
                 for (int i = 0; i < 50; i++) {
                     if (i < (50 * (1 - (bytesLeftReceiver / (float) fileSizeReceiver)))) {
