@@ -123,7 +123,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
 
             long fileSizeReceiver = 0;
 
-            int bytesLeftReceiver = 0;
+            long bytesLeftReceiver = 0;
 
             if(packetSize < 0){
                 perror("Receiving control packet");
@@ -146,11 +146,10 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
                 }
 
                 if(packet[0] == 1){
-                    fileSizeReceiver = (packet[3] << 24) | (packet[4] << 16) | (packet[5] << 8) | packet[6];
+                    fileSizeReceiver = (packet[2] << 24) | (packet[3] << 16) | (packet[4] << 8) | packet[5];
                     bytesLeftReceiver = fileSizeReceiver;
                     printf("File size: %ld\n", fileSizeReceiver);
                 }
-
                 else if(packet[0] == 3) break;
                 else if(packet[0] != 2) continue;   
 
@@ -166,16 +165,16 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
 
                 bytesLeftReceiver -= (packetSize - 4);
 
-                // printf("\rProgress: [");
-                // for (int i = 0; i < 50; i++) {
-                //     if (i < (50 * (1 - (bytesLeftReceiver / (float) fileSizeReceiver)))) {
-                //         printf("=");
-                //     } else {
-                //         printf(" ");
-                //     }
-                // }
-                // printf("] %.2f%%", 100 * (1 - (bytesLeftReceiver / (float) fileSizeReceiver)));
-                // fflush(stdout);
+                printf("\rProgress: [");
+                for (int i = 0; i < 50; i++) {
+                    if (i < (50 * (1 - (bytesLeftReceiver / (float) fileSizeReceiver)))) {
+                        printf("=");
+                    } else {
+                        printf(" ");
+                    }
+                }
+                printf("] %.2f%%", 100 * (1 - (bytesLeftReceiver / (float) fileSizeReceiver)));
+                fflush(stdout);
             
 
                 //create a progress bar based on fileSizeReceiver and T_SIZE
