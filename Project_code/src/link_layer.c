@@ -114,14 +114,6 @@ int llwrite(const unsigned char *buf, int bufSize)
     alarmCount = 0;
 
     int originalSize = bufSize;
-
-
-    FILE *file = fopen("logTransmitter.txt", "a");
-    for(int i = 0 ; i < bufSize ; i++){
-        fprintf(file, "ControlPacket[%d]: 0x%02X\n", i, buf[i]);
-    }
-    
-    fclose(file);
     
     enum ReadingState state = START_STATE;
     unsigned char * frameBuffer = malloc((2*bufSize + 7) * sizeof(unsigned char));
@@ -231,12 +223,10 @@ int llwrite(const unsigned char *buf, int bufSize)
                 }
                 break;
             case REJ0_STATE:
-                alarmEnabled = FALSE;
-                state = STOP_STATE;
-                break;
             case REJ1_STATE:
                 alarmEnabled = FALSE;
                 state = STOP_STATE;
+                curRetransmissions++; // Incrementa o numero de retransmissoes porque se receber o rej1 não conta como uma falha de transmissão
                 break;
             case ERROR_STATE:
                 alarmEnabled = FALSE;
@@ -358,8 +348,9 @@ int llread(unsigned char *packet)
     if(error == 1){
         if(frameNumberRead == 1){
             sendCommandBit(0, A1, REJ1);
+        }else{
+            sendCommandBit(0, A1, REJ0);
         }
-        sendCommandBit(0, A1, REJ0);
     }
     
 

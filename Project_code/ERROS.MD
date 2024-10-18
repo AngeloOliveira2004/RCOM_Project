@@ -1,1 +1,0 @@
-LLread esta a funcionar direito de momento acho que o llwrite nao está a receber bem o command bit

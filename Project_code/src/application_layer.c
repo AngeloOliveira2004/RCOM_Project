@@ -91,6 +91,18 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
 
                 bytesLeft -= dataSize;
                 sequence = (sequence + 1) % 99;
+
+                // create a progress bar based on bytesLeft and fileSize
+                printf("\rProgress: [");
+                for (int i = 0; i < 50; i++) {
+                    if (i < (50 * (1 - (bytesLeft / (float) fileSize)))) {
+                        printf("=");
+                    } else {
+                        printf(" ");
+                    }
+                }
+                printf("] %.2f%%", 100 * (1 - (bytesLeft / (float) fileSize)));
+                fflush(stdout);
             }
 
             
@@ -108,6 +120,10 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
             unsigned char * packet = (unsigned char *) malloc(2*T_SIZE * sizeof(unsigned char));
 
             int packetSize = llread(packet);
+
+            long fileSizeReceiver = 0;
+
+            int bytesLeftReceiver = 0;
 
             if(packetSize < 0){
                 perror("Receiving control packet");
@@ -129,36 +145,40 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
                     exit(-1);
                 }
 
-                if(packet[0] == 3){
-                    break;
+                if(packet[0] == 1){
+                    fileSizeReceiver = (packet[3] << 24) | (packet[4] << 16) | (packet[5] << 8) | packet[6];
+                    bytesLeftReceiver = fileSizeReceiver;
+                    printf("File size: %ld\n", fileSizeReceiver);
                 }
 
-                if(packet[0] != 2){
-                   continue;    
-                }
-
-                FILE *file2 = fopen("logReceiver.txt", "a");
-                for(int i = 0 ; i < packetSize ; i++){
-                    fprintf(file2, "ControlPacket[%d]: 0x%02X\n", i, packet[i]);
-                }
-
-                
-                fclose(file2);
+                else if(packet[0] == 3) break;
+                else if(packet[0] != 2) continue;   
 
                 if (packetSize <= 0) {
                     fprintf(stderr, "Invalid packet size\n");
                     exit(-1);
                 }
 
-
-                 // I don't want to write the first 4 bytes of the packet
-
-
-
-                if (fwrite(packet + 4, sizeof(unsigned char), packetSize - 4, Newfile) != packetSize - 4) {
+                if (fwrite(packet + 4, sizeof(unsigned char), packetSize - 4, Newfile) != packetSize - 4) { // I don't want to write the first 4 bytes of the packet
                     perror("Error writing to file");
                     exit(-1);
                 }
+
+                bytesLeftReceiver -= (packetSize - 4);
+
+                // printf("\rProgress: [");
+                // for (int i = 0; i < 50; i++) {
+                //     if (i < (50 * (1 - (bytesLeftReceiver / (float) fileSizeReceiver)))) {
+                //         printf("=");
+                //     } else {
+                //         printf(" ");
+                //     }
+                // }
+                // printf("] %.2f%%", 100 * (1 - (bytesLeftReceiver / (float) fileSizeReceiver)));
+                // fflush(stdout);
+            
+
+                //create a progress bar based on fileSizeReceiver and T_SIZE
 
                 fflush(Newfile);
 
