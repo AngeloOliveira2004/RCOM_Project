@@ -22,11 +22,6 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
                       int nTries, int timeout, const char *filename)
 {   
 
-    FILE *file = fopen("logReceiver.txt", "w");
-    fclose(file);
-    file = fopen("logTransmitter.txt", "w");
-    fclose(file);
-
     LinkLayer connectionParameters = {
 
         .role = strcmp(role, "rx") == 0 ? LlRx : LlTx,
