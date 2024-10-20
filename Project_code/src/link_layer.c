@@ -32,6 +32,14 @@ void alarmHandler(int signal)
 }
 
 
+void disAlarm(){
+    alarmEnabled = FALSE;
+    alarmCount = 0;
+    curRetransmissions = retransmitions;
+    //alarm(0);
+}
+
+
 int llopen(LinkLayer connectionParameters)
 {
     int fd = openSerialPort(connectionParameters.serialPort, connectionParameters.baudRate); // Open the serial port with the parameters defined in the struct
@@ -229,8 +237,8 @@ int llwrite(const unsigned char *buf, int bufSize)
             case REJ0_STATE:
             case REJ1_STATE:
                 printf("REJ received\n");
-                alarmEnabled = FALSE;
-
+                
+                disAlarm();
                 state = START_STATE;
                 curRetransmissions++; // Incrementa o numero de retransmissoes porque se receber o rej1 não conta como uma falha de transmissão
                 break;
@@ -241,6 +249,7 @@ int llwrite(const unsigned char *buf, int bufSize)
                 break;
             }
         }
+
 
         if(state == STOP_STATE){
            
@@ -316,6 +325,10 @@ int llread(unsigned char *packet)
                 error = 1;
                 state = ERROR_STATE;
             }
+            break;
+        case ERROR_STATE:
+            error = 1;
+            state = STOP_STATE;
             break;
         case READING_STATE:
             if (byte == FLAG)
