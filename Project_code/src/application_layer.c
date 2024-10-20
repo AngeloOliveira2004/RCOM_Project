@@ -86,7 +86,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
 
                 bytesLeft -= dataSize;
                 sequence = (sequence + 1) % 99;
-
+                /* 
                 // create a progress bar based on bytesLeft and fileSize
                 system("clear");
                 printf("\n\n\n\n\n\n");
@@ -99,6 +99,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
                     }
                 }
                 printf("] %.2f%%", 100 * (1 - (bytesLeft / (float) fileSize)));
+                */
                 fflush(stdout);
             }
 
@@ -162,6 +163,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
                 }
 
                 bytesLeftReceiver -= (packetSize - 4);
+                /*
                 system("clear");
                 printf("\n\n\n\n\n\n");
                 printf("\rProgress: [");
@@ -174,7 +176,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
                 }
                 printf("] %.2f%%", 100 * (1 - (bytesLeftReceiver / (float) fileSizeReceiver)));
                 fflush(stdout);
-            
+                */
 
                 //create a progress bar based on fileSizeReceiver and T_SIZE
 

@@ -194,13 +194,17 @@ int llwrite(const unsigned char *buf, int bufSize)
                 }
                 break;
             case A_RCV_STATE:
-            //recebeu o AB a pedir o frame 0 logo frameNumberWrite tem de ser igual a 0
+                //recebeu o AB a pedir o frame 0 logo frameNumberWrite tem de ser igual a 0
                 if (byte == (frameNumberWrite == 0 ? RR1 : RR0)){
                     state = C_RCV_STATE;
                 }
                 else if (byte == FLAG){
                     state = FLAG_RCV_STATE;
                 }
+                else if(byte == REJ0 || byte == REJ1){
+                    state = REJ0_STATE;
+                }
+
                 else{
                     state = ERROR_STATE; 
                 }
@@ -224,8 +228,10 @@ int llwrite(const unsigned char *buf, int bufSize)
                 break;
             case REJ0_STATE:
             case REJ1_STATE:
+                printf("REJ received\n");
                 alarmEnabled = FALSE;
-                state = STOP_STATE;
+
+                state = START_STATE;
                 curRetransmissions++; // Incrementa o numero de retransmissoes porque se receber o rej1 não conta como uma falha de transmissão
                 break;
             case ERROR_STATE:
@@ -265,6 +271,11 @@ int llread(unsigned char *packet)
         if(readByte((char *) &byte) < 1){
             continue;
         }
+
+        
+        printf("Byte: %x\n", byte);
+        printf("State: %s\n", getReadingStateName(state));
+        
         
         switch (state)
         {
@@ -323,6 +334,9 @@ int llread(unsigned char *packet)
                 } else {
                     memset(packet, 0, number_of_bytes_read);
                     number_of_bytes_read = 0;
+                    error = 1;
+                    printf("Error reading frame\n");
+                    state = FLAG_RCV_STATE;
                 }
 
             }else {
@@ -346,6 +360,9 @@ int llread(unsigned char *packet)
     }
     
     if(error == 1){
+        memset(packet, 0, number_of_bytes_read);
+        number_of_bytes_read = 0;
+
         if(frameNumberRead == 1){
             sendCommandBit(0, A1, REJ1);
         }else{
