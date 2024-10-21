@@ -15,7 +15,6 @@ int frameNumberWrite = 0;
 int frameNumberRead = 0;
 
 int sequenceNumber = 0;
-int curRetransmissions = 3;
 
 LinkLayerRole role;
 
@@ -35,7 +34,6 @@ void alarmHandler(int signal)
 void disAlarm(){
     alarmEnabled = FALSE;
     alarmCount = 0;
-    curRetransmissions = retransmitions;
     //alarm(0);
 }
 
@@ -128,7 +126,7 @@ int llwrite(const unsigned char *buf, int bufSize)
     
     frameBuffer[0] = FLAG;
     frameBuffer[1] = A3;
-    frameBuffer[2] = C0;
+    frameBuffer[2] = frameNumberWrite == 0 ? C0 : C1;
     frameBuffer[3] = frameBuffer[1] ^ frameBuffer[2];
 
     unsigned char totalXOR = buf[0]; 
@@ -240,7 +238,7 @@ int llwrite(const unsigned char *buf, int bufSize)
                 
                 disAlarm();
                 state = START_STATE;
-                curRetransmissions++; // Incrementa o numero de retransmissoes porque se receber o rej1 não conta como uma falha de transmissão
+                curRetransmitions++; // Incrementa o numero de retransmissoes porque se receber o rej1 não conta como uma falha de transmissão
                 break;
             case ERROR_STATE:
                 alarmEnabled = FALSE;
