@@ -31,7 +31,8 @@ enum ReadingState{
     ERROR_STATE,
     DISC_RCV_STATE,
     REJ0_STATE,
-    REJ1_STATE 
+    REJ1_STATE ,
+    HEADER_ERROR_STATE
 };
 
 typedef enum{

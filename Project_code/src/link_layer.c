@@ -158,7 +158,7 @@ int llwrite(const unsigned char *buf, int bufSize)
     unsigned char byte = 0x00;
 
     signal(SIGALRM, alarmHandler);
-    while (curRetransmitions > 0 && state != STOP_STATE) {
+    while (alarmCount < retransmitions && state != STOP_STATE) {
         
         number_of_bytes_written = writeBytes((const char *)completeBuffer, bufSize);
         printf("Number of bytes written: %d\n", number_of_bytes_written);
@@ -268,11 +268,12 @@ int llread(unsigned char *packet)
 {      
     int number_of_bytes_read = 0;
     int error = 0;
+    int reading = 0;
 
     enum ReadingState state = START_STATE;
     unsigned char byte = 0x00 , cByte = 0x00;
 
-    while (state != STOP_STATE)
+    while (state != STOP_STATE || reading == 0)
     {
         
         if(readByte((char *) &byte) < 1){
@@ -283,6 +284,9 @@ int llread(unsigned char *packet)
         printf("Byte: %x\n", byte);
         printf("State: %s\n", getReadingStateName(state));
         
+        if(state == STOP_STATE){
+            break;
+        }
         
         switch (state)
         {
@@ -306,9 +310,12 @@ int llread(unsigned char *packet)
 
             if(byte == C0 || byte == C1){
                 cByte = byte;
+                reading = 1;
                 state = C_RCV_STATE;
             } else if (byte == FLAG) {
                 state = FLAG_RCV_STATE;
+            } else if(byte == SET){
+                state = HEADER_ERROR_STATE;
             } else {
                 state = ERROR_STATE;
                 error = 1;
@@ -328,7 +335,7 @@ int llread(unsigned char *packet)
             error = 1;
             state = STOP_STATE;
             break;
-        case READING_STATE:
+        case READING_STATE: {
             if (byte == FLAG)
             {
                 number_of_bytes_read = destuff(packet, number_of_bytes_read);
@@ -345,14 +352,28 @@ int llread(unsigned char *packet)
                 } else {
                     memset(packet, 0, number_of_bytes_read);
                     number_of_bytes_read = 0;
-                    error = 1;
+
                     printf("Error reading frame\n");
-                    state = FLAG_RCV_STATE;
+                    state = START_STATE;
+
+                    if(frameNumberRead == 1){
+                        sendCommandBit(0, A1, REJ1);
+                    }else{
+                        sendCommandBit(0, A1, REJ0);
+                    }
                 }
 
             }else {
                 packet[number_of_bytes_read++] = byte;
             }
+            break;
+        }
+        case HEADER_ERROR_STATE:
+            reading = 0;
+            if(byte == (SET ^ A3)){
+                sendCommandBit(0, A3, UA);
+            }
+            state = START_STATE;
             break;
         default:
             break;

@@ -42,7 +42,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
 
     switch (connectionParameters.role)
     {
-        case LlTx:
+        case LlTx:{
             FILE *file = fopen(filename, "rb");
             if (file == NULL) {
                 perror("Opening file");
@@ -113,7 +113,8 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
             printf("End of transmission\n");
 
             break;
-        case LlRx:
+        }
+        case LlRx:{
             
             unsigned char * packet = (unsigned char *) malloc(2*T_SIZE * sizeof(unsigned char));
 
@@ -190,6 +191,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
             fclose(Newfile);
 
             break;
+        }
         default:
             break;
     }
