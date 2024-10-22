@@ -14,7 +14,7 @@ int timeout = 0;
 int frameNumberWrite = 0;
 int frameNumberRead = 0;
 
-int sequenceNumber = 0;
+int sequenceNumber = 50;
 
 LinkLayerRole role;
 
@@ -153,6 +153,15 @@ int llwrite(const unsigned char *buf, int bufSize)
     bufSize += 1;
     completeBuffer[bufSize - 1] = FLAG;
 
+    FILE * file = fopen("logTransmitter.txt", "a");
+    fprintf(file, "Sent frame: ");
+    for(int i = 4; i < bufSize-2; i++){
+        fprintf(file, "%x ", completeBuffer[i]);
+    }
+    //fprintf(file, "%d", bufSize);
+    fprintf(file, "\n");
+    fclose(file);
+
     int curRetransmitions = retransmitions;
 
     unsigned char byte = 0x00;
@@ -161,6 +170,7 @@ int llwrite(const unsigned char *buf, int bufSize)
     while (alarmCount < retransmitions && state != STOP_STATE) {
         
         number_of_bytes_written = writeBytes((const char *)completeBuffer, bufSize);
+
         printf("Number of bytes written: %d\n", number_of_bytes_written);
 
         if(number_of_bytes_written != bufSize){
@@ -271,7 +281,7 @@ int llread(unsigned char *packet)
     int reading = 0;
 
     enum ReadingState state = START_STATE;
-    unsigned char byte = 0x00 , cByte = 0x00;
+    unsigned char byte = 0x00 , cByte = 0x00 ;
 
     while (state != STOP_STATE || reading == 0)
     {
@@ -352,15 +362,9 @@ int llread(unsigned char *packet)
                 } else {
                     memset(packet, 0, number_of_bytes_read);
                     number_of_bytes_read = 0;
-
-                    printf("Error reading frame\n");
-                    state = START_STATE;
-
-                    if(frameNumberRead == 1){
-                        sendCommandBit(0, A1, REJ1);
-                    }else{
-                        sendCommandBit(0, A1, REJ0);
-                    }
+                    error = 1;
+                    reading = 1;
+                    state = STOP_STATE;
                 }
 
             }else {
@@ -381,6 +385,26 @@ int llread(unsigned char *packet)
         
     }  
     
+            
+    FILE * file = fopen("logDup.txt", "a");
+    fprintf(file, "Cur seq numer : %x", packet[1]);
+    fprintf(file, " Last seq numer : %i", sequenceNumber);
+    fprintf(file, "Error: %d\n", error);
+    fprintf(file, "\n");
+    fclose(file);
+
+    if(packet[0] == 2 && error == 0){
+        if(sequenceNumber == (int) packet[1]){
+            printf("Repeated frame\n");
+            error = 0;
+            memset(packet, 0, number_of_bytes_read);
+            number_of_bytes_read = 0;
+        }else{
+            sequenceNumber = (int) packet[1];
+        }
+    }
+
+
     if (error == 0) {
         if(frameNumberRead == 1){
             frameNumberRead = 0;
@@ -418,7 +442,8 @@ int llclose(int showStatistics){
 
     switch (role) {
     case LlTx:
-    
+        //disAlarm();
+        
         signal(SIGALRM, alarmHandler);
         while (curRetransmitions > 0 && state != STOP_STATE){
             
@@ -540,7 +565,7 @@ unsigned char * stuffing(unsigned char *frameBuffer, int* size) {
 
 int destuff(unsigned char* stuffedBuffer, int size){
 
-    unsigned char* deStuffedBuffer = malloc(size * sizeof(unsigned char));
+    unsigned char* deStuffedBuffer = (unsigned char *)  malloc(2*size * sizeof(unsigned char));
 
     int actualSize = 0;
 

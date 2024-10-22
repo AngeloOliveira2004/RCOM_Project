@@ -145,6 +145,10 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
             while(1){
                 packetSize = llread(packet);
 
+                if(packetSize == 0){
+                    continue;
+                }
+
                 if(packetSize < 0){
                     perror("Receiving data packet");
                     exit(-1);
@@ -153,10 +157,18 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
                 if(packet[0] == 3) break;
                 else if(packet[0] != 2) continue;   
 
-                if (packetSize <= 0) {
+                if (packetSize < 0) {
                     fprintf(stderr, "Invalid packet size\n");
                     exit(-1);
                 }
+
+                FILE * file = fopen("logReceiver.txt", "a");
+                fprintf(file, "Sent frame: ");
+                for(int i = 0; i < packetSize; i++){
+                    fprintf(file, "%x ", packet[i]);
+                }
+                fprintf(file, "\n");
+                fclose(file);
 
                 if (fwrite(packet + 4, sizeof(unsigned char), packetSize - 4, Newfile) != packetSize - 4) { // I don't want to write the first 4 bytes of the packet
                     perror("Error writing to file");
@@ -241,7 +253,7 @@ int assembleDataPacket(int dataSize , int sequence, unsigned char * dataPacket) 
     dataPacket[index++] = 2; // Control field set to '2' for data
 
     // 2. Sequence Number (0-99)
-    dataPacket[index++] = sequence % 100;
+    dataPacket[index++] = sequence;
 
     // 3. Length Fields
     dataPacket[index++] = dataSize >> 8; // MSB
