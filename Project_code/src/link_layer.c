@@ -290,9 +290,8 @@ int llread(unsigned char *packet)
             continue;
         }
 
-        
-        printf("Byte: %x\n", byte);
-        printf("State: %s\n", getReadingStateName(state));
+        //printf("Byte: %x\n", byte);
+        //printf("State: %s\n", getReadingStateName(state));
         
         if(state == STOP_STATE){
             break;
@@ -393,14 +392,28 @@ int llread(unsigned char *packet)
     fprintf(file, "\n");
     fclose(file);
 
+
     if(packet[0] == 2 && error == 0){
+
+        int packetSentSize = packet[2] << 8 | packet[3];
+
+        if(packetSentSize != number_of_bytes_read - 4){
+            printf("Error reading frame\n");
+            printf("packetSentSize %i" , packetSentSize);
+            printf("number_of_bytes_read %i" , number_of_bytes_read);
+        }
+
+
         if(sequenceNumber == (int) packet[1]){
             printf("Repeated frame\n");
+            //printf("Last packet size: %i\n", lastPacketSize);
+            printf("Number of bytes read: %i\n", number_of_bytes_read);
             error = 0;
             memset(packet, 0, number_of_bytes_read);
             number_of_bytes_read = 0;
         }else{
             sequenceNumber = (int) packet[1];
+            //lastPacketSize = number_of_bytes_read;
         }
     }
 
@@ -476,6 +489,9 @@ int llclose(int showStatistics){
             if(readByte((char *)&byte) < 1){
                     continue;
             }
+
+            printf("Byte: %x\n", byte);
+            printf("State: %s\n", getReadingStateName(state));
 
             transitionNextState(&byte, &state, A3, DISC);
         }
