@@ -161,7 +161,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
                     fprintf(stderr, "Invalid packet size\n");
                     exit(-1);
                 }
-
+    
                 FILE * file = fopen("logReceiver.txt", "a");
                 fprintf(file, "Sent frame: ");
                 for(int i = 0; i < packetSize; i++){

@@ -67,7 +67,7 @@ int llopen(LinkLayer connectionParameters)
             
             while (state != STOP_STATE && alarmEnabled == FALSE)
             {   
-                if(readByte(&byte) < 1){
+                if(readByte((char *) &byte) < 1){
                     continue;
                 }
 
@@ -86,7 +86,7 @@ int llopen(LinkLayer connectionParameters)
 
         while (state != STOP_STATE)
         {   
-            if(readByte(&byte) < 1){
+            if(readByte((char *) &byte) < 1){
                 continue;
             }
             
@@ -148,10 +148,6 @@ int llwrite(const unsigned char *buf, int bufSize)
 
     frameBuffer[bufSize] = totalXOR;
 
-    completeBuffer = stuffing(frameBuffer, &bufSize);
-
-    bufSize += 1;
-    completeBuffer[bufSize - 1] = FLAG;
 
     FILE * file = fopen("logTransmitter.txt", "a");
     fprintf(file, "Sent frame: ");
@@ -161,6 +157,12 @@ int llwrite(const unsigned char *buf, int bufSize)
     //fprintf(file, "%d", bufSize);
     fprintf(file, "\n");
     fclose(file);
+
+    completeBuffer = stuffing(frameBuffer, &bufSize);
+
+    bufSize += 1;
+    completeBuffer[bufSize - 1] = FLAG;
+
 
     int curRetransmitions = retransmitions;
 
@@ -416,7 +418,6 @@ int llread(unsigned char *packet)
             //lastPacketSize = number_of_bytes_read;
         }
     }
-
 
     if (error == 0) {
         if(frameNumberRead == 1){
