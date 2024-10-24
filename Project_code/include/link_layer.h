@@ -13,6 +13,7 @@
 #include <termios.h>
 #include <unistd.h>
 #include <signal.h>
+#include <time.h>
 
 #define BAUDRATE B38400
 #define BUF_SIZE 256
@@ -61,6 +62,19 @@ typedef struct
     int nRetransmissions;
     int timeout;
 } LinkLayer;
+
+
+typedef struct
+{
+    int fileSize;
+    int numSUFrames;
+    int numIFrames;
+    int numSuccessFrames;
+    int numREJ;
+    int numTimeouts;
+    float elapsedTime;
+
+} Statistics;
 
 // SIZE of maximum acceptable payload.
 // Maximum number of bytes that application layer should send to link layer

@@ -13,9 +13,11 @@ int retransmitions = 0;
 int timeout = 0;
 int frameNumberWrite = 0;
 int frameNumberRead = 0;
+clock_t start,end;
 
 int sequenceNumber = 50;
 
+Statistics statistics;
 LinkLayerRole role;
 
 ////////////////////////////////////////////////
@@ -56,6 +58,8 @@ int llopen(LinkLayer connectionParameters)
         return -1;
     }
 
+    start = clock();
+
     retransmitions = connectionParameters.nRetransmissions;
     timeout = connectionParameters.timeout;
     role = connectionParameters.role;
@@ -70,7 +74,7 @@ int llopen(LinkLayer connectionParameters)
 
         signal(SIGALRM, alarmHandler);
         while (connectionParameters.nRetransmissions > 0 && state != STOP_STATE){
-            
+            statistics.numSUFrames++;
             sendCommandBit(fd, A3, SET);
             alarm(connectionParameters.timeout);
             alarmEnabled = FALSE;
@@ -104,6 +108,7 @@ int llopen(LinkLayer connectionParameters)
         }
 
         if(state == STOP_STATE){
+            statistics.numSUFrames++;
             sendCommandBit(fd, A1, UA);
         }
 
@@ -177,7 +182,8 @@ int llwrite(const unsigned char *buf, int bufSize)
     unsigned char byte = 0x00;
 
     signal(SIGALRM, alarmHandler);
-    while (alarmCount < retransmitions && state != STOP_STATE) {
+    while (alarmCount < curRetransmitions && state != STOP_STATE) {
+        statistics.numIFrames++;
         
         number_of_bytes_written = writeBytes((const char *)completeBuffer, bufSize);
 
@@ -257,7 +263,7 @@ int llwrite(const unsigned char *buf, int bufSize)
             case REJ0_STATE:
             case REJ1_STATE:
                 printf("REJ received\n");
-                
+                statistics.numREJ++;
                 disAlarm();
                 state = START_STATE;
                 curRetransmitions++; // Incrementa o numero de retransmissoes porque se receber o rej1 não conta como uma falha de transmissão
@@ -272,10 +278,11 @@ int llwrite(const unsigned char *buf, int bufSize)
 
 
         if(state == STOP_STATE){
-           
+            statistics.numSuccessFrames++;
             return originalSize;
         }
 
+        statistics.numTimeouts++;
         curRetransmitions--;
     }
     
@@ -294,6 +301,8 @@ int llread(unsigned char *packet)
 
     enum ReadingState state = START_STATE;
     unsigned char byte = 0x00 , cByte = 0x00 ;
+
+    statistics.numIFrames++;
 
     while (state != STOP_STATE || reading == 0)
     {
@@ -421,6 +430,7 @@ int llread(unsigned char *packet)
             //printf("Last packet size: %i\n", lastPacketSize);
             printf("Number of bytes read: %i\n", number_of_bytes_read);
             error = 0;
+            statistics.numSuccessFrames--;
             memset(packet, 0, number_of_bytes_read);
             number_of_bytes_read = 0;
         }else{
@@ -430,6 +440,7 @@ int llread(unsigned char *packet)
     }
 
     if (error == 0) {
+        statistics.numSuccessFrames++;
         if(frameNumberRead == 1){
             frameNumberRead = 0;
             sendCommandBit(0, A1, RR0);
@@ -442,7 +453,7 @@ int llread(unsigned char *packet)
     if(error == 1){
         memset(packet, 0, number_of_bytes_read);
         number_of_bytes_read = 0;
-
+        statistics.numREJ++;
         if(frameNumberRead == 1){
             sendCommandBit(0, A1, REJ1);
         }else{
@@ -458,6 +469,7 @@ int llread(unsigned char *packet)
 // LLCLOSE
 ////////////////////////////////////////////////
 int llclose(int showStatistics){
+
     enum ReadingState state = START_STATE;
 
     int curRetransmitions = retransmitions;
@@ -471,6 +483,7 @@ int llclose(int showStatistics){
         while (curRetransmitions > 0 && state != STOP_STATE){
             
             sendCommandBit(1, A3, DISC);
+            statistics.numSUFrames++;
             alarm(timeout);
             alarmEnabled = FALSE;
             
@@ -490,6 +503,7 @@ int llclose(int showStatistics){
         }
 
         sendCommandBit(1, A3, UA);
+        statistics.numSUFrames++;
       
         break;
     case LlRx:
@@ -507,6 +521,7 @@ int llclose(int showStatistics){
         }
 
         sendCommandBit(1, A1, DISC);
+        statistics.numSUFrames++;
 
         state = START_STATE;
 
@@ -531,6 +546,19 @@ int llclose(int showStatistics){
     }
 
     printf("Connection closed\n");
+
+    end = clock();
+    float elapsed = (float) (end - start) / CLOCKS_PER_SEC;
+
+    if(showStatistics){
+        printf("Statistics:\n");
+        printf("  - Number of S and U frames: %d\n", statistics.numSUFrames);
+        printf("  - Number of I frames: %d\n", statistics.numIFrames);
+        printf("  - Number of successful I frames: %d\n", statistics.numSuccessFrames);
+        printf("  - Number of REJ frames: %d\n", statistics.numREJ);
+        printf("  - Number of timeouts: %d\n", statistics.numTimeouts);
+        printf("  - Elapsed time: %.2f seconds\n", elapsed);
+    }
 
     int clstat = closeSerialPort();
     return clstat;

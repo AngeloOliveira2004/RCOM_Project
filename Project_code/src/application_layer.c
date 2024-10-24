@@ -30,6 +30,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
         .timeout = timeout
     };
 
+
     strcpy(connectionParameters.serialPort, serialPort);
 
     // Open the connection
@@ -208,7 +209,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
             break;
     }
 
-    llclose(0);
+    llclose(1);
 
     return;
 }

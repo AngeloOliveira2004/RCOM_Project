@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <math.h>
+#include <time.h>
 
 // Application layer main function.
 // Arguments:
