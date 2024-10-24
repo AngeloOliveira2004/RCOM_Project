@@ -165,7 +165,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
     
                 FILE * file = fopen("logReceiver.txt", "a");
                 fprintf(file, "Sent frame: ");
-                for(int i = 0; i < packetSize; i++){
+                for(int i = 0; i < packetSize-1; i++){
                     fprintf(file, "%x ", packet[i]);
                 }
                 fprintf(file, "\n");

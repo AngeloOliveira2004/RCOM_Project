@@ -161,6 +161,7 @@ int llwrite(const unsigned char *buf, int bufSize)
 
     frameBuffer[bufSize] = totalXOR;
 
+    completeBuffer = stuffing(frameBuffer, &bufSize);
 
     FILE * file = fopen("logTransmitter.txt", "a");
     fprintf(file, "Sent frame: ");
@@ -171,7 +172,6 @@ int llwrite(const unsigned char *buf, int bufSize)
     fprintf(file, "\n");
     fclose(file);
 
-    completeBuffer = stuffing(frameBuffer, &bufSize);
 
     bufSize += 1;
     completeBuffer[bufSize - 1] = FLAG;
@@ -279,6 +279,7 @@ int llwrite(const unsigned char *buf, int bufSize)
 
         if(state == STOP_STATE){
             statistics.numSuccessFrames++;
+            free(frameBuffer);
             return originalSize;
         }
 
@@ -286,6 +287,7 @@ int llwrite(const unsigned char *buf, int bufSize)
         curRetransmitions--;
     }
     
+    free(frameBuffer);
     printf("Error sending frame\n");
     return -1;
 }
@@ -644,6 +646,8 @@ int destuff(unsigned char* stuffedBuffer, int size){
     }
 
     memcpy(stuffedBuffer, deStuffedBuffer, actualSize);
+
+    free(deStuffedBuffer);
 
     return actualSize;
 }
