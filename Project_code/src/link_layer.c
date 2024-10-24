@@ -32,9 +32,9 @@ void alarmHandler(int signal)
 
 
 void disAlarm(){
-    alarmEnabled = FALSE;
+    alarmEnabled = TRUE;
     alarmCount = 0;
-    //alarm(0);
+    alarm(0);
 }
 
 
@@ -93,11 +93,9 @@ int llopen(LinkLayer connectionParameters)
             transitionNextState(&byte, &state, A3, SET);
         }
 
-        if(state != STOP_STATE){
-            exit(-1);
+        if(state == STOP_STATE){
+            sendCommandBit(fd, A1, UA);
         }
-
-        sendCommandBit(fd, A1, UA);
 
         break;
     default:
@@ -181,8 +179,10 @@ int llwrite(const unsigned char *buf, int bufSize)
                     exit(-1);
         }
 
-        alarm(timeout);
-        alarmEnabled = FALSE;
+        if(alarmEnabled == TRUE){
+            alarmEnabled = FALSE;
+            alarm(timeout);
+        }
 
         state = START_STATE;
 
@@ -456,7 +456,6 @@ int llclose(int showStatistics){
 
     switch (role) {
     case LlTx:
-        //disAlarm();
         
         signal(SIGALRM, alarmHandler);
         while (curRetransmitions > 0 && state != STOP_STATE){
@@ -633,7 +632,6 @@ char* getReadingStateName(enum ReadingState state) {
 int transitionNextState(char *byte, enum ReadingState *state, int A, int C) {
     switch (*state) {
         case START_STATE:
-
             if (*byte == FLAG) *state = FLAG_RCV_STATE;
             break;
 
@@ -641,7 +639,7 @@ int transitionNextState(char *byte, enum ReadingState *state, int A, int C) {
 
             if (*byte == A) *state = A_RCV_STATE;
             else if (*byte == FLAG) *state = FLAG_RCV_STATE;
-            else *state = ERROR_STATE;
+            else *state = START_STATE;
             break;
 
         case A_RCV_STATE:
