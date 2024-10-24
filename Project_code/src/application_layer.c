@@ -165,7 +165,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
     
                 FILE * file = fopen("logReceiver.txt", "a");
                 fprintf(file, "Sent frame: ");
-                for(int i = 0; i < packetSize-1; i++){
+                for(int i = 0; i < packetSize; i++){
                     fprintf(file, "%x ", packet[i]);
                 }
                 fprintf(file, "\n");
@@ -197,12 +197,13 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
                 fflush(Newfile);
 
                 memset(packet, 0, 2 * T_SIZE);
+
             }
 
             printf("End of file\n");
 
             fclose(Newfile);
-
+            free(packet);
             break;
         }
         default:
