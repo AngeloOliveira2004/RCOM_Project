@@ -32,6 +32,16 @@ void alarmHandler(int signal)
 
 
 void disAlarm(){
+    char rbyte = 0x00;
+
+    while(1){
+        int number_of_bytes_read = readByte(&rbyte);
+
+        if(number_of_bytes_read < 1){
+            break;
+        }
+    }
+
     alarmEnabled = TRUE;
     alarmCount = 0;
     alarm(0);
