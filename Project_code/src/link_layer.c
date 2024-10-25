@@ -161,16 +161,19 @@ int llwrite(const unsigned char *buf, int bufSize)
 
     frameBuffer[bufSize] = totalXOR;
 
-    completeBuffer = stuffing(frameBuffer, &bufSize);
-
     FILE * file = fopen("logTransmitter.txt", "a");
-    fprintf(file, "Sent frame: ");
-    for(int i = 4; i < bufSize-2; i++){
-        fprintf(file, "%x ", completeBuffer[i]);
+    if(frameBuffer[4] == 1 || frameBuffer[4] == 3){
+    }else{
+        fprintf(file, "Sent frame: ");
+        for(int i = 4; i < bufSize-1; i++){
+            fprintf(file, "%x ", frameBuffer[i]);
+        }
+        //fprintf(file, "%d", bufSize);
+        fprintf(file, "\n");
+        fclose(file);
     }
-    //fprintf(file, "%d", bufSize);
-    fprintf(file, "\n");
-    fclose(file);
+
+    completeBuffer = stuffing(frameBuffer, &bufSize);
 
 
     bufSize += 1;
