@@ -195,10 +195,8 @@ int llwrite(const unsigned char *buf, int bufSize)
                     exit(-1);
         }
 
-        if(alarmEnabled == TRUE){
-            alarmEnabled = FALSE;
-            alarm(timeout);
-        }
+        alarmEnabled = FALSE;
+        alarm(timeout);
 
         state = START_STATE;
 
