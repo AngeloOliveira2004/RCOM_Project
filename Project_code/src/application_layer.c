@@ -98,7 +98,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
                         printf(" ");
                     }
                 }
-                printf("] %.2f%%", 100 * (1 - (bytesLeft / (float) fileSize)));
+                printf("] %.2f%%\n", 100 * (1 - (bytesLeft / (float) fileSize)));
                 
                 fflush(stdout);
             }
@@ -178,7 +178,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
                         printf(" ");
                     }
                 }
-                printf("] %.2f%%", 100 * (1 - (bytesLeftReceiver / (float) fileSizeReceiver)));
+                printf("] %.2f%%\n", 100 * (1 - (bytesLeftReceiver / (float) fileSizeReceiver)));
                 fflush(stdout);
 
                 fflush(Newfile);

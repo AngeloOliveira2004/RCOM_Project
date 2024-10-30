@@ -167,6 +167,10 @@ int llwrite(const unsigned char *buf, int bufSize)
     bufSize += 1;
     completeBuffer[bufSize - 1] = FLAG;
 
+    if(frameBuffer[4] == 1 && frameBuffer[5] == 0){
+        statistics.fileSize = frameBuffer[7] << 24 | frameBuffer[8] << 16 | frameBuffer[9] << 8 | frameBuffer[10];
+    }
+
 
     int curRetransmitions = retransmitions;
 
@@ -399,6 +403,7 @@ int llread(unsigned char *packet)
     if(packet[0] == 2 && error == 0){
 
         int packetSentSize = packet[2] << 8 | packet[3];
+        statistics.fileSize += packetSentSize;
 
         if(packetSentSize != number_of_bytes_read - 4){
             printf("Error reading frame\n");
@@ -540,6 +545,8 @@ int llclose(int showStatistics){
         printf("  - Number of REJ frames: %d\n", statistics.numREJ);
         printf("  - Number of timeouts: %d\n", statistics.numTimeouts);
         printf("  - Elapsed time: %.2f seconds\n", elapsed);
+        printf("  - File size: %d bytes\n", statistics.fileSize);
+        printf("  - Transfer speed: %.2f bytes/second\n", (float) statistics.fileSize / elapsed);
     }
 
     int clstat = closeSerialPort();
