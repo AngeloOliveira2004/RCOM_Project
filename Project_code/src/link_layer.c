@@ -85,7 +85,7 @@ int llopen(LinkLayer connectionParameters)
                     continue;
                 }
 
-                transitionNextState(&byte, &state, A1, UA);                   
+                transitionNextState(&byte, &state, A3, UA);                   
             }
             connectionParameters.nRetransmissions--;
         }
@@ -109,7 +109,7 @@ int llopen(LinkLayer connectionParameters)
 
         if(state == STOP_STATE){
             statistics.numSUFrames++;
-            sendCommandBit(fd, A1, UA);
+            sendCommandBit(fd, A3, UA);
         }
 
         break;
@@ -489,7 +489,7 @@ int llclose(int showStatistics){
             }
         }
 
-        sendCommandBit(1, A3, UA);
+        sendCommandBit(1, A1, UA);
         statistics.numSUFrames++;
       
         break;
@@ -518,7 +518,7 @@ int llclose(int showStatistics){
                     continue;
             }
 
-            transitionNextState(&byte, &state, A3, UA);
+            transitionNextState(&byte, &state, A1, UA);
         }
 
         if(state != STOP_STATE){
