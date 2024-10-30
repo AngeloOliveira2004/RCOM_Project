@@ -1,0 +1,23 @@
+Transmitter:
+
+Statistics:
+  - Number of S and U frames: 3
+  - Number of I frames: 312
+  - Number of successful I frames: 45
+  - Number of REJ frames: 249
+  - Number of timeouts: 267
+  - Elapsed time: 153.61 seconds
+  - File size: 10968 bytes
+  - Transfer speed: 71.40 bytes/second
+
+Receiver:
+
+Statistics:
+  - Number of S and U frames: 2
+  - Number of I frames: 301
+  - Number of successful I frames: 45
+  - Number of REJ frames: 254
+  - Number of timeouts: 0
+  - Elapsed time: 154.51 seconds
+  - File size: 11608 bytes
+  - Transfer speed: 75.13 bytes/second
