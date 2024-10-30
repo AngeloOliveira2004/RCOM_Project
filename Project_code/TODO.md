@@ -1,0 +1,2 @@
+-- Checkar se a logica da llopen e llclose está correta.
+-- Tornar código mais bonito (meh)

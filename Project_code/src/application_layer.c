@@ -87,8 +87,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
 
                 bytesLeft -= dataSize;
                 sequence = (sequence + 1) % 99;
-                /* 
-                // create a progress bar based on bytesLeft and fileSize
+                
                 system("clear");
                 printf("\n\n\n\n\n\n");
                 printf("\rProgress: [");
@@ -100,10 +99,9 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
                     }
                 }
                 printf("] %.2f%%", 100 * (1 - (bytesLeft / (float) fileSize)));
-                */
+                
                 fflush(stdout);
             }
-
             
             unsigned char * endControlPacket = assembleControlPacket(filename, &fileSize, 3 , &controPacketSize);
             if(llwrite(endControlPacket, controPacketSize) < 0){
@@ -162,14 +160,6 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
                     fprintf(stderr, "Invalid packet size\n");
                     exit(-1);
                 }
-    
-                FILE * file = fopen("logReceiver.txt", "a");
-                fprintf(file, "Sent frame: ");
-                for(int i = 0; i < packetSize; i++){
-                    fprintf(file, "%x ", packet[i]);
-                }
-                fprintf(file, "\n");
-                fclose(file);
 
                 if (fwrite(packet + 4, sizeof(unsigned char), packetSize - 4, Newfile) != packetSize - 4) { // I don't want to write the first 4 bytes of the packet
                     perror("Error writing to file");
@@ -177,7 +167,7 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
                 }
 
                 bytesLeftReceiver -= (packetSize - 4);
-                /*
+
                 system("clear");
                 printf("\n\n\n\n\n\n");
                 printf("\rProgress: [");
@@ -190,9 +180,6 @@ void applicationLayer(const char *serialPort, const char *role, int baudRate,
                 }
                 printf("] %.2f%%", 100 * (1 - (bytesLeftReceiver / (float) fileSizeReceiver)));
                 fflush(stdout);
-                */
-
-                //create a progress bar based on fileSizeReceiver and T_SIZE
 
                 fflush(Newfile);
 

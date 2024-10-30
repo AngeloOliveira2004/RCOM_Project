@@ -36,18 +36,6 @@ enum ReadingState{
     HEADER_ERROR_STATE
 };
 
-typedef enum{
-    I_Frame,
-    S_Frame,
-    U_Frame,
-    Disc_Frame,
-    Error_Frame,
-    RR0_Frame,
-    RR1_Frame,
-    REJ0_Frame,
-    REJ1_Frame
-} FrameType;
-
 typedef enum
 {
     LlTx, // Transmitter_Role
@@ -101,16 +89,22 @@ int llread(unsigned char *packet);
 // Return "1" on success or "-1" on error.
 int llclose(int showStatistics);
 
+//activates the alarm
 void alarmHandler(int signal);
 
+//sends a command bit whose address is A and control is C
 int sendCommandBit(int fd , unsigned char A , unsigned char C);
 
+//stuffing the frame and returns the stuffed frame
 unsigned char *stuffing(unsigned char *frameBuffer, int* size);
 
+//destuffing the frame and returns 0 if sucess otherwise -1
 int destuff(unsigned char* stuffedBuffer, int size);
 
+//returns the name of the reading state
 char* getReadingStateName(enum ReadingState state);
 
+//state machine to handle the reading of the frames on llopen and llclose
 int transitionNextState(char *byte, enum ReadingState *state, int A, int C);
 
 #endif // _LINK_LAYER_H_

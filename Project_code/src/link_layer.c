@@ -161,18 +161,6 @@ int llwrite(const unsigned char *buf, int bufSize)
 
     frameBuffer[bufSize] = totalXOR;
 
-    FILE * file = fopen("logTransmitter.txt", "a");
-    if(frameBuffer[4] == 1 || frameBuffer[4] == 3){
-    }else{
-        fprintf(file, "Sent frame: ");
-        for(int i = 4; i < bufSize-1; i++){
-            fprintf(file, "%x ", frameBuffer[i]);
-        }
-        //fprintf(file, "%d", bufSize);
-        fprintf(file, "\n");
-        fclose(file);
-    }
-
     completeBuffer = stuffing(frameBuffer, &bufSize);
 
 
@@ -408,15 +396,6 @@ int llread(unsigned char *packet)
         
     }  
     
-            
-    FILE * file = fopen("logDup.txt", "a");
-    fprintf(file, "Cur seq numer : %x", packet[1]);
-    fprintf(file, " Last seq numer : %i", sequenceNumber);
-    fprintf(file, "Error: %d\n", error);
-    fprintf(file, "\n");
-    fclose(file);
-
-
     if(packet[0] == 2 && error == 0){
 
         int packetSentSize = packet[2] << 8 | packet[3];
