@@ -501,8 +501,8 @@ int llclose(int showStatistics){
                     continue;
             }
 
-            printf("Byte: %x\n", byte);
-            printf("State: %s\n", getReadingStateName(state));
+            // printf("Byte: %x\n", byte);
+            // printf("State: %s\n", getReadingStateName(state));
 
             transitionNextState(&byte, &state, A3, DISC);
         }
