@@ -1,0 +1,146 @@
+T_size 1024
+
+Transmitter:
+
+Statistics:
+  - Number of S and U frames: 3
+  - Number of I frames: 13
+  - Number of successful I frames: 13
+  - Number of REJ frames: 0
+  - Number of timeouts: 0
+  - Elapsed time: 11.68 seconds
+  - File size: 10968 bytes
+  - Transfer speed: 939.23 bytes/second
+
+Receiver:
+
+Statistics:
+  - Number of S and U frames: 2
+  - Number of I frames: 13
+  - Number of successful I frames: 13
+  - Number of REJ frames: 0
+  - Number of timeouts: 0
+  - Elapsed time: 14.19 seconds
+  - File size: 10968 bytes
+  - Transfer speed: 772.95 bytes/second
+
+----------------------------------------------------------------------------------
+
+
+T_size 512
+
+Transmitter:
+
+Statistics:
+  - Number of S and U frames: 3
+  - Number of I frames: 24
+  - Number of successful I frames: 24
+  - Number of REJ frames: 0
+  - Number of timeouts: 0
+  - Elapsed time: 11.84 seconds
+  - File size: 10968 bytes
+  - Transfer speed: 926.08 bytes/second
+
+Receiver:
+
+Statistics:
+  - Number of S and U frames: 2
+  - Number of I frames: 24
+  - Number of successful I frames: 24
+  - Number of REJ frames: 0
+  - Number of timeouts: 0
+  - Elapsed time: 13.48 seconds
+  - File size: 10968 bytes
+  - Transfer speed: 813.63 bytes/second
+
+
+----------------------------------------------------------------------------------
+
+
+T_size 256
+
+Transmitter:
+
+Statistics:
+  - Number of S and U frames: 3
+  - Number of I frames: 45
+  - Number of successful I frames: 45
+  - Number of REJ frames: 0
+  - Number of timeouts: 0
+  - Elapsed time: 12.13 seconds
+  - File size: 10968 bytes
+  - Transfer speed: 903.89 bytes/second
+
+Receiver:
+
+Statistics:
+  - Number of S and U frames: 2
+  - Number of I frames: 45
+  - Number of successful I frames: 45
+  - Number of REJ frames: 0
+  - Number of timeouts: 0
+  - Elapsed time: 13.03 seconds
+  - File size: 10968 bytes
+  - Transfer speed: 842.03 bytes/second
+
+
+----------------------------------------------------------------------------------
+
+
+T_size 128
+
+Transmitter:
+
+Statistics:
+  - Number of S and U frames: 3
+  - Number of I frames: 88
+  - Number of successful I frames: 88
+  - Number of REJ frames: 0
+  - Number of timeouts: 0
+  - Elapsed time: 12.80 seconds
+  - File size: 10968 bytes
+  - Transfer speed: 857.01 bytes/second
+
+Receiver:
+
+Statistics:
+  - Number of S and U frames: 2
+  - Number of I frames: 88
+  - Number of successful I frames: 88
+  - Number of REJ frames: 0
+  - Number of timeouts: 0
+  - Elapsed time: 16.54 seconds
+  - File size: 10968 bytes
+  - Transfer speed: 663.01 bytes/second
+
+----------------------------------------------------------------------------------
+
+
+T_size 64
+
+Transmitter:
+
+Statistics:
+  - Number of S and U frames: 3
+  - Number of I frames: 174
+  - Number of successful I frames: 174
+  - Number of REJ frames: 0
+  - Number of timeouts: 0
+  - Elapsed time: 14.09 seconds
+  - File size: 10968 bytes
+  - Transfer speed: 778.33 bytes/second
+
+Receiver:
+
+Statistics:
+  - Number of S and U frames: 2
+  - Number of I frames: 174
+  - Number of successful I frames: 174
+  - Number of REJ frames: 0
+  - Number of timeouts: 0
+  - Elapsed time: 15.12 seconds
+  - File size: 10968 bytes
+  - Transfer speed: 725.43 bytes/second
+
+
+
