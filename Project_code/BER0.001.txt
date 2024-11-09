@@ -21,3 +21,97 @@ Statistics:
   - Elapsed time: 154.51 seconds
   - File size: 11608 bytes
   - Transfer speed: 75.13 bytes/second
+
+
+--------------------------------------------------------------------------------------------------------
+
+T_size 128:
+
+Receiver:
+
+Statistics:
+  - Number of S and U frames: 2
+  - Number of I frames: 285
+  - Number of successful I frames: 88
+  - Number of REJ frames: 187
+  - Number of timeouts: 0
+  - Elapsed time: 92.53 seconds
+  - File size: 12248 bytes
+  - Transfer speed: 132.37 bytes/second
+
+Transmitter:
+
+Statistics:
+  - Number of S and U frames: 3
+  - Number of I frames: 285
+  - Number of successful I frames: 88
+  - Number of REJ frames: 184
+  - Number of timeouts: 197
+  - Elapsed time: 91.69 seconds
+  - File size: 10968 bytes
+  - Transfer speed: 119.62 bytes/second
+
+-----------------------------------------------------------------------------------------
+
+T_size 256:
+
+Transmitter:
+
+Statistics:
+  - Number of S and U frames: 3
+  - Number of I frames: 279
+  - Number of successful I frames: 45
+  - Number of REJ frames: 215
+  - Number of timeouts: 234
+  - Elapsed time: 147.74 seconds
+  - File size: 10968 bytes
+  - Transfer speed: 74.24 bytes/second
+
+Receiver:
+
+Statistics:
+  - Number of S and U frames: 3
+  - Number of I frames: 279
+  - Number of successful I frames: 45
+  - Number of REJ frames: 215
+  - Number of timeouts: 234
+  - Elapsed time: 147.74 seconds
+  - File size: 10968 bytes
+  - Transfer speed: 74.24 bytes/second
+
+--------------------------------------------------------------------------------------------------------
+
+T_size 512:
+
+Receiver:
+
+Statistics:
+  - Number of S and U frames: 2
+  - Number of I frames: 531
+  - Number of successful I frames: 24
+  - Number of REJ frames: 503
+  - Number of timeouts: 0
+  - Elapsed time: 389.58 seconds
+  - File size: 13016 bytes
+  - Transfer speed: 33.41 bytes/second
+
+Transmitter:
+
+Statistics:
+  - Number of S and U frames: 5
+  - Number of I frames: 537
+  - Number of successful I frames: 24
+  - Number of REJ frames: 488
+  - Number of timeouts: 513
+  - Elapsed time: 384.82 seconds
+  - File size: 10968 bytes
+  - Transfer speed: 28.50 bytes/second
+
+--------------------------------------------------------------------------------------------------------
+
+T_size 1024:
+
+Receiver:
+
+
+Transmitter:
