@@ -7,7 +7,7 @@ BIN = bin/
 
 .PHONY: downloader
 downloader: $(SRC)/main.c
-	$(CC) $(CFLAGS) -o protocol $^
+	$(CC) $(CFLAGS) -o download $^
 
 .PHONY: clean
 clean:
