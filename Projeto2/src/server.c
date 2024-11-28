@@ -149,18 +149,50 @@ int authenticate(int socket , struct URL *SERVER_URL){
 }
 
 
-int passiveMode(int sockfd , struct URL *SERVER_URL , char * newPort , char * newIP){ //Server IP addr. Server IP port for file transfer = 256×198 + 138 = 50826
+int passiveMode(int sockfd, struct URL *SERVER_URL, char *newPort, char *newIP) {
     char *response = malloc(MAX_LENGTH);
     int responseSize = 0;
 
-    write(sockfd , "PASV\r\n" , 6);
+    // Send PASV command
+    write(sockfd, "PASV\r\n", 6);
 
-    if(readResponse(sockfd , &response , &responseSize) != PASSIVE_MODE){
+    // Read the response from the server
+    if (readResponse(sockfd, &response, &responseSize) != PASSIVE_MODE) {
         fprintf(stderr, "Error reading response.\n");
-        exit(EXIT_FAILURE);
+        free(response);  // Don't forget to free memory
+        return -1;
     }
 
     printf("Response: %s\n", response);
 
+    // Find the part of the response that contains the IP and port information
+    char *start = strstr(response, "(");  // Find the start of the IP/port
+    char *end = strstr(response, ")");    // Find the end of the IP/port
+
+    if (start == NULL || end == NULL) {
+        fprintf(stderr, "Error: Invalid PASV response format.\n");
+        free(response);
+        return -1;
+    }
+
+    // Extract the part inside the parentheses
+    start++;  // Skip the '('
+    *end = '\0';  // Null-terminate at ')'
+
+    // Now `start` contains the string like "193,137,29,15,198,138"
+    int ip1, ip2, ip3, ip4, portHigh, portLow;
+    if (sscanf(start, "%d,%d,%d,%d,%d,%d", &ip1, &ip2, &ip3, &ip4, &portHigh, &portLow) != 6) {
+        fprintf(stderr, "Error parsing PASV response.\n");
+        free(response);
+        return -1;
+    }
+
+    // Construct the new IP address and port number
+    snprintf(newIP, MAX_LENGTH, "%d.%d.%d.%d", ip1, ip2, ip3, ip4);
+    int port = 256 * portHigh + portLow;
+    snprintf(newPort, MAX_LENGTH, "%d", port);
+
+    // Clean up and return
+    free(response);
     return PASSIVE_MODE;
 }
