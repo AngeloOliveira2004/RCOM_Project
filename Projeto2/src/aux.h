@@ -7,19 +7,41 @@
 #include "arpa/inet.h"
 #include "unistd.h"
 #include "netdb.h"
+#include <regex.h>
+
+#define MAX_LENGTH 1024
+
+#define FALSE 0
+#define TRUE 1
+
+#define CR '\r'
+#define LF '\n'
+#define CRLF '\r\n'
 
 struct URL
 {
-    char *protocol;
-    char *domain;
-    char *path;
-    char *address;
-    char *user;
-    char *password;
-    int   port;
-    int   host;
-    int   ip;
+    char protocol[MAX_LENGTH];
+    char domain[MAX_LENGTH];
+    char path[MAX_LENGTH];
+    char address[MAX_LENGTH];
+    char user[MAX_LENGTH];
+    char password[MAX_LENGTH];
+    char ip[MAX_LENGTH];
+    int  port;
 };
+
+enum ResponseCodes{
+    OK = 220,
+    ASK_PASSWORD = 331,
+    LOGIN_SUCCESSFUL = 230,
+    DIR_CHANGED = 250,
+    FILE_SIZE = 213,
+    PASSIVE_MODE = 227,
+    TRANSFER_COMPLETE = 226, //Final reply (1st digit of code > 1)
+    BINARY_MODE = 150, //in order to transfer the file, will only be used in the state machine of file transfer
+    END = 221,
+};
+
 
 /*
 struct hostent {
@@ -32,4 +54,10 @@ struct hostent {
 };
 */
 
-struct URL *parse_url(char *url);
+struct URL *parseUrl(const char *url);
+
+void getIP(char *hostname , char *ip);
+
+void printURL(struct URL *url);
+
+int readByte(int socket , char *byte , const int size);

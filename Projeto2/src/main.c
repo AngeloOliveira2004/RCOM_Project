@@ -1,4 +1,4 @@
-#include "aux.h"
+#include "server.h"
 
 #define h_addr h_addr_list[0]
 
@@ -8,10 +8,15 @@
     
     Adaptation from getIP.c , given by teachers.
 */
-int getIP(char *hostname) {
+void getIP(char *hostname , char *ip) {
     struct hostent *h;
 
     // Get host entry for the hostname
+
+    fprintf(stderr, "Hostname: %s\n", hostname);
+
+    hostname = "google.com";
+
     if ((h = gethostbyname(hostname)) == NULL) {
         herror("gethostbyname()");
         exit(-1);
@@ -23,143 +28,101 @@ int getIP(char *hostname) {
     // Print host name for debugging
     printf("Host name  : %s\n", h->h_name);
     printf("IP Address : %s\n", inet_ntoa(*addr));
+    
+    //ip = inet_ntoa(*addr);
+    strcpy(ip, inet_ntoa(*addr));
 
     // Return the IP address as an integer in network byte order
-    return addr->s_addr;
+    return;
 }
 
-/**      (C)2000-2021 FEUP
- *       tidy up some includes and parameters
- * 
- *       Connect to the server.
- *       Adaptation from clientTCP.c , given by teachers.
- * */
-
-int connectToServer(struct URL *SERVER_URL) {
-    int SERVER_PORT = SERVER_URL->port;
-    char *SERVER_ADDR = SERVER_URL->address;
-
-    int sockfd;
-    struct sockaddr_in server_addr;
-
-    /* Server address handling */
-    bzero((char *)&server_addr, sizeof(server_addr));
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_addr.s_addr = inet_addr(SERVER_ADDR); /* 32-bit Internet address, network byte ordered */
-    server_addr.sin_port = htons(SERVER_PORT);           /* Server TCP port must be network byte ordered */
-
-    /* Open a TCP socket */
-    if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-        perror("socket()");
-        exit(EXIT_FAILURE);
-    }
-
-    /* Connect to the server */
-    if (connect(sockfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) < 0) {
-        perror("connect()");
-        close(sockfd); /* Clean up before exiting */
-        exit(EXIT_FAILURE);
-    }
-
-    /* Return the socket descriptor for further use */
-    return sockfd;
-}
-
-struct URL *parse_url(char *url) {
+struct URL *parseUrl(const char *url) {
     if (url == NULL) {
         fprintf(stderr, "Error: URL cannot be NULL.\n");
         return NULL;
     }
 
+    // Regex pattern for URL parsing
+    const char *pattern = "^(ftp)://([^:@]+:[^:@]+@)?([^:/]+)(:[0-9]+)?(/.*)?$";
+    regex_t regex;
+    if (regcomp(&regex, pattern, REG_EXTENDED) != 0) {
+        fprintf(stderr, "Error: Could not compile regex.\n");
+        return NULL;
+    }
+
+    // Match regex
+    regmatch_t matches[6]; // 1 for each group in the regex
+    if (regexec(&regex, url, 6, matches, 0) != 0) {
+        fprintf(stderr, "Error: Invalid URL format.\n");
+        regfree(&regex);
+        return NULL;
+    }
+
+    // Allocate memory for URL struct
     struct URL *parsed_url = malloc(sizeof(struct URL));
     if (parsed_url == NULL) {
         perror("malloc");
+        regfree(&regex);
         return NULL;
     }
 
-    parsed_url->protocol = malloc(8);  // "ftp://" is 6 chars, leaving room for null terminator
-    parsed_url->domain = malloc(128);
-    parsed_url->path = malloc(256);
+    // Extract protocol
+    snprintf(parsed_url->protocol, sizeof(parsed_url->protocol), "%.*s",
+             (int)(matches[1].rm_eo - matches[1].rm_so), url + matches[1].rm_so);
 
-    if (!parsed_url->protocol || !parsed_url->domain || !parsed_url->path) {
-        perror("malloc");
-        free(parsed_url->protocol);
-        free(parsed_url->domain);
-        free(parsed_url->path);
-        free(parsed_url);
-        return NULL;
-    }
+    // Extract domain
+    snprintf(parsed_url->domain, sizeof(parsed_url->domain), "%.*s",
+             (int)(matches[3].rm_eo - matches[3].rm_so), url + matches[3].rm_so);
 
-    // Extract protocol (e.g., "ftp")
-    char *protocol = strtok(url, ":");
-    if (protocol == NULL) {
-        fprintf(stderr, "Error: Invalid URL format (missing protocol).\n");
-        free(parsed_url);
-        return NULL;
-    }
-    strcpy(parsed_url->protocol, protocol);
-
-    // Check for "://" after protocol
-    if (strncmp(strtok(NULL, ""), "//", 2) != 0) {
-        fprintf(stderr, "Error: Invalid URL format (missing // after protocol).\n");
-        free(parsed_url);
-        return NULL;
-    }
-
-    // Extract domain (e.g., "ftp.netlab.fe.up.pt")
-    char *domain = strtok(NULL, "/");
-    if (domain == NULL) {
-        fprintf(stderr, "Error: Domain missing in URL.\n");
-        free(parsed_url);
-        return NULL;
-    }
-    strcpy(parsed_url->domain, domain);
-
-    // Extract port if present (e.g., "ftp.netlab.fe.up.pt:21")
-    char *port_ptr = strchr(parsed_url->domain, ':');
-    if (port_ptr != NULL) {
-        *port_ptr = '\0'; // Null-terminate the domain part
-        parsed_url->port = atoi(port_ptr + 1); // Extract the port number
+    // Extract port if present
+    if (matches[4].rm_so != -1) {
+        char port_str[6] = {0};
+        snprintf(port_str, sizeof(port_str), "%.*s",
+                 (int)(matches[4].rm_eo - matches[4].rm_so - 1), // Skip the ':'
+                 url + matches[4].rm_so + 1);
+        parsed_url->port = atoi(port_str);
     } else {
         parsed_url->port = 21; // Default FTP port
     }
 
-    // Extract path (e.g., "/pub/")
-    char *path = strtok(NULL, "");
-    if (path == NULL) {
-        parsed_url->path = malloc(2);  // Default to "/"
-        strcpy(parsed_url->path, "/");
+    // Extract path if present
+    if (matches[5].rm_so != -1) {
+        snprintf(parsed_url->path, sizeof(parsed_url->path), "%.*s",
+                 (int)(matches[5].rm_eo - matches[5].rm_so), url + matches[5].rm_so);
     } else {
-        strcpy(parsed_url->path, path);
+        strcpy(parsed_url->path, "/");
     }
 
-    // Copy domain as address (may be useful for other purposes)
-    parsed_url->address = malloc(strlen(parsed_url->domain) + 1);
-    if (parsed_url->address != NULL) {
-        strcpy(parsed_url->address, parsed_url->domain);
-    }
+    // Copy domain to address
+    snprintf(parsed_url->address, sizeof(parsed_url->address), "%s", parsed_url->domain);
 
-    // Resolve the domain to IP address
-    parsed_url->ip = getIP(parsed_url->domain);
-    if (parsed_url->ip == -1) {
-        fprintf(stderr, "Error: Could not resolve IP address for domain %s.\n", parsed_url->domain);
-        free(parsed_url->protocol);
-        free(parsed_url->domain);
-        free(parsed_url->path);
-        free(parsed_url->address);
-        free(parsed_url);
-        return NULL;
-    }
+    // Resolve domain to IP address
+    getIP(parsed_url->domain , parsed_url->ip);
 
+    regfree(&regex);
     return parsed_url;
 }
 
-void print_URL(struct URL *url){
+void printURL(struct URL *url){
     printf("Protocol: %s\n", url->protocol);
     printf("Domain: %s\n", url->domain);
     printf("Path: %s\n", url->path);
+    printf("Port: %d\n", url->port);
     printf("Address: %s\n", url->address);
-    printf("IP: %d\n", url->ip);
+    printf("IP: %s\n", url->ip);
+    printf("User %s\n" , url->user);
+    printf("Password %s\n" , url->password);
+}
+
+int readByte(int socket , char *byte , const int size){
+    int readBytes = read(socket , byte , size);
+
+    if(readBytes < 0){
+        perror("read");
+        exit(EXIT_FAILURE);
+    }
+
+    return readBytes;
 }
 
 int main(int argc, char *argv[]) {
@@ -174,12 +137,53 @@ int main(int argc, char *argv[]) {
     printf("Input URL: %s\n", argv[1]);
     printf("URL Length: %zu characters\n", input_length);
 
-    struct URL *parsed_url = parse_url(argv[1]);
+    struct URL *parsed_url = parseUrl(argv[1]);
 
-    print_URL(parsed_url);
+    printURL(parsed_url);
 
+    int sockfd = connectToServer(parsed_url);
+
+    char *response = malloc(MAX_LENGTH);
+    if (!response) {
+        perror("malloc failed");
+        exit(EXIT_FAILURE);
+    }
+    int responseSize = 0;
+
+    if(initializeCon(sockfd , &response , &responseSize) == OK){
+        printf("Response: %s\n", response);
+    }else{
+        fprintf(stderr, "Error initializing connection.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    authenticate(sockfd , parsed_url);
+
+    //passiveMode(sockfd , parsed_url);
+
+    closeConnection(sockfd);
+
+    //example url: ftp://username:password@<domain>/<path>
+    //example url: ftp.netlab.fe.up.pt/pub/files/file.txt
     //example url: ftp://username:password@ftp.netlab.fe.up.pt/pub/files/file.txt
 
     return 0;
 }
 
+
+/*
+int passiveMode(int sockfd , struct URL *SERVER_URL , char * port){ //Server IP addr. Server IP port for file transfer = 256×198 + 138 = 50826
+    char response[MAX_LENGTH];
+    int responseSize = 0;
+
+    write(sockfd , "PASV\r\n" , 6);
+
+    if(readResponse(sockfd , response , &responseSize) != PASSIVE_MODE){
+        printf(stderr, "Error reading response.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    printf("Response: %s\n", response);
+
+    return PASSIVE_MODE;
+}*/
