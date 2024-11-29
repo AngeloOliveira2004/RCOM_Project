@@ -12,4 +12,6 @@ int initializeCon(int sockfd, char **response, int *responseSize);
 
 int authenticate(int socket , struct URL *SERVER_URL);
 
-int passiveMode(int sockfd , struct URL *SERVER_URL , char * newPort , char * newIP);
+int passiveMode(int sockfd , struct URL *SERVER_URL , char ** newPort , char ** newIP);
+
+int downloadFile(const int serverSocket, const int clientSocket , const char *filename);

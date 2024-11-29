@@ -9,7 +9,7 @@
 
 int connectToServer(struct URL *SERVER_URL) {
     int SERVER_PORT = SERVER_URL->port;
-    char *SERVER_ADDR = SERVER_URL->address;
+    char *SERVER_IP = SERVER_URL->ip;
 
     int sockfd;
     struct sockaddr_in server_addr;
@@ -17,7 +17,7 @@ int connectToServer(struct URL *SERVER_URL) {
     /* Server address handling */
     bzero((char *)&server_addr, sizeof(server_addr));
     server_addr.sin_family = AF_INET;
-    server_addr.sin_addr.s_addr = inet_addr(SERVER_ADDR); /* 32-bit Internet address, network byte ordered */
+    server_addr.sin_addr.s_addr = inet_addr(SERVER_IP); /* 32-bit Internet address, network byte ordered */
     server_addr.sin_port = htons(SERVER_PORT);           /* Server TCP port must be network byte ordered */
 
     /* Open a TCP socket */
@@ -149,7 +149,7 @@ int authenticate(int socket , struct URL *SERVER_URL){
 }
 
 
-int passiveMode(int sockfd, struct URL *SERVER_URL, char *newPort, char *newIP) {
+int passiveMode(int sockfd, struct URL *SERVER_URL, char **newPort, char **newIP) {
     char *response = malloc(MAX_LENGTH);
     int responseSize = 0;
 
@@ -188,11 +188,59 @@ int passiveMode(int sockfd, struct URL *SERVER_URL, char *newPort, char *newIP) 
     }
 
     // Construct the new IP address and port number
-    snprintf(newIP, MAX_LENGTH, "%d.%d.%d.%d", ip1, ip2, ip3, ip4);
+    snprintf(*newIP, MAX_LENGTH, "%d.%d.%d.%d", ip1, ip2, ip3, ip4);
     int port = 256 * portHigh + portLow;
-    snprintf(newPort, MAX_LENGTH, "%d", port);
+    snprintf(*newPort, MAX_LENGTH, "%d", port);
 
     // Clean up and return
     free(response);
     return PASSIVE_MODE;
+}
+
+
+int downloadFile(const int serverSocket, const int clientSocket, const char *filename) {
+    // Send RETR command
+    char command[MAX_LENGTH];
+    snprintf(command, MAX_LENGTH, "RETR %s\r\n", filename);
+    if (write(serverSocket, command, strlen(command)) <= 0) {
+        perror("Error sending RETR command");
+        return -1;
+    }
+
+    // Read the response from the server
+    char *response = malloc(MAX_LENGTH);
+    int responseSize = 0;
+    if (readResponse(serverSocket, &response, &responseSize) != BINARY_MODE) {
+        fprintf(stderr, "Error reading response.\n");
+        free(response);  // Don't forget to free memory
+        return -1;
+    }
+
+    printf("Response: %s\n", response);
+
+    // Open the file for writing
+    FILE *file = fopen(filename, "wb");
+    if (file == NULL) {
+        perror("Error opening file for writing");
+        free(response);
+        return -1;
+    }
+
+    // Read the file contents from the server
+    char buffer[MAX_LENGTH];
+    int bytesRead;
+    while ((bytesRead = read(serverSocket, buffer, MAX_LENGTH)) > 0) {
+        if (write(clientSocket, buffer, bytesRead) <= 0) {
+            perror("Error writing to client socket");
+            fclose(file);
+            free(response);
+            return -1;
+        }
+        fwrite(buffer, 1, bytesRead, file);
+    }
+
+    // Close the file and clean up
+    fclose(file);
+    free(response);
+    return TRANSFER_COMPLETE;
 }

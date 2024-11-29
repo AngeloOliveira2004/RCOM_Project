@@ -141,7 +141,7 @@ int main(int argc, char *argv[]) {
 
     printURL(parsed_url);
 
-    int sockfd = connectToServer(parsed_url);
+    int serverSocketFD = connectToServer(parsed_url);
 
     char *response = malloc(MAX_LENGTH);
     if (!response) {
@@ -150,40 +150,74 @@ int main(int argc, char *argv[]) {
     }
     int responseSize = 0;
 
-    if(initializeCon(sockfd , &response , &responseSize) == OK){
+    if(initializeCon(serverSocketFD , &response , &responseSize) == OK){
         printf("Response: %s\n", response);
     }else{
         fprintf(stderr, "Error initializing connection.\n");
         exit(EXIT_FAILURE);
     }
 
-    authenticate(sockfd , parsed_url);
+    authenticate(serverSocketFD , parsed_url);
 
-    //passiveMode(sockfd , parsed_url);
+    struct URL *newURL = malloc(sizeof(struct URL));
+    char * newIP;
+    char * newPort;
 
-    closeConnection(sockfd);
+    passiveMode(serverSocketFD , parsed_url , &newPort , &newIP);
+
+    newURL->port = atoi(newPort);
+    strcpy(newURL->ip , newIP);
+
+    printf("New IP: %s\n" , newURL->ip);
+    printf("New Port: %d\n" , newURL->port);
+
+    int clientSocketFD = connectToServer(newURL);
+
+    char * fileName = parsed_url->path;
+    int fileNameSize = 0;
+
+    for(int i = strlen(parsed_url->path) ; i > 0 ; i--){
+        if(parsed_url->path[i] == '/'){
+            fileNameSize = strlen(parsed_url->path) - i;
+            break;
+        }
+
+        fileName[fileNameSize++] = parsed_url->path[i];
+    }
+
+    downloadFile(serverSocketFD , clientSocketFD , fileName);
+
+    free(parsed_url);
+
+    closeConnection(clientSocketFD);
+    closeConnection(serverSocketFD);
 
     //example url: ftp://username:password@<domain>/<path>
     //example url: ftp.netlab.fe.up.pt/pub/files/file.txt
     //example url: ftp://username:password@ftp.netlab.fe.up.pt/pub/files/file.txt
 
+    /*
+    Protocol (ftp):
+    Extract everything before ://.
+
+    User and Password (username:password):
+    Extract the portion between :// and @. Split into user and password using :.
+
+    Domain (ftp.netlab.fe.up.pt):
+    Extract everything between @ and the first /. This is the domain.
+
+    Path (/pub/files/file.txt):
+    Extract everything after the first /.
+
+    Address (ftp.netlab.fe.up.pt or IP):
+    This duplicates domain unless resolved to an IP address.
+
+    IP (193.136.212.249):
+    Perform a DNS lookup on domain to resolve its IP address.
+
+    Port (21):
+    The default FTP port is 21. If the domain includes a port (e.g., ftp.netlab.fe.up.pt:2121), extract and use that.
+    */
+
     return 0;
 }
-
-
-/*
-int passiveMode(int sockfd , struct URL *SERVER_URL , char * port){ //Server IP addr. Server IP port for file transfer = 256×198 + 138 = 50826
-    char response[MAX_LENGTH];
-    int responseSize = 0;
-
-    write(sockfd , "PASV\r\n" , 6);
-
-    if(readResponse(sockfd , response , &responseSize) != PASSIVE_MODE){
-        printf(stderr, "Error reading response.\n");
-        exit(EXIT_FAILURE);
-    }
-
-    printf("Response: %s\n", response);
-
-    return PASSIVE_MODE;
-}*/
