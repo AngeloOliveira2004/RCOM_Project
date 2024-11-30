@@ -15,8 +15,6 @@ void getIP(char *hostname , char *ip) {
 
     fprintf(stderr, "Hostname: %s\n", hostname);
 
-    hostname = "google.com";
-
     if ((h = gethostbyname(hostname)) == NULL) {
         herror("gethostbyname()");
         exit(-1);
@@ -99,6 +97,10 @@ struct URL *parseUrl(const char *url) {
     // Resolve domain to IP address
     getIP(parsed_url->domain , parsed_url->ip);
 
+    snprintf(parsed_url->user , sizeof(parsed_url->user) , "rcom");
+    
+    snprintf(parsed_url->password , sizeof(parsed_url->password) , "rcom");
+    
     regfree(&regex);
     return parsed_url;
 }
@@ -143,6 +145,8 @@ int main(int argc, char *argv[]) {
 
     int serverSocketFD = connectToServer(parsed_url);
 
+    printf("Server Socket: %d\n", serverSocketFD);
+
     char *response = malloc(MAX_LENGTH);
     if (!response) {
         perror("malloc failed");
@@ -156,6 +160,8 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "Error initializing connection.\n");
         exit(EXIT_FAILURE);
     }
+
+    printf("Connection initialized.\n");
 
     authenticate(serverSocketFD , parsed_url);
 

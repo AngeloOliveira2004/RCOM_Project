@@ -11,6 +11,8 @@ int connectToServer(struct URL *SERVER_URL) {
     int SERVER_PORT = SERVER_URL->port;
     char *SERVER_IP = SERVER_URL->ip;
 
+    printf("Connecting to server %s:%d\n", SERVER_IP, SERVER_PORT);
+
     int sockfd;
     struct sockaddr_in server_addr;
 
@@ -61,8 +63,13 @@ int readResponse(int sockfd, char **response, int *responseSize) {
     int totalBytes = 0;
     int isMultiLine = 0;
 
+    printf("Reading response...\n");
+
     // Read response code and determine type
     int code = readResponseCode(sockfd);
+
+    printf("Response code: %d\n", code);
+
     if (code < 0) return -1;
 
     char byte;
@@ -84,8 +91,15 @@ int readResponse(int sockfd, char **response, int *responseSize) {
                     break; // End of single-line response
                 }
             } else {
+                printf("Multi-line continuation\n");
+                for(int i = 0 ; i < 4 ; i++){
+                    printf("%c" , buffer[i]);
+                }
+                memset(buffer, 0, MAX_LENGTH);
+                totalBytes = 0;
                 // Multi-line ends when the code is followed by a space
                 if (strncmp(buffer, "220 ", 4) == 0) {
+                    printf("End of multi-line response\n");
                     break;
                 }
             }
@@ -101,13 +115,14 @@ int readResponse(int sockfd, char **response, int *responseSize) {
 
 int initializeCon(int sockfd, char **response, int *responseSize) {
     int code = readResponse(sockfd, response, responseSize);
+
     if (code < 0) {
         fprintf(stderr, "Failed to initialize connection\n");
         return -1;
     }
     if (code == 220) {
         printf("Connection initialized: %s\n", *response);
-        return 0;
+        return OK;
     }
     fprintf(stderr, "Unexpected response: %s\n", *response);
     return -1;
@@ -117,6 +132,8 @@ int initializeCon(int sockfd, char **response, int *responseSize) {
 int authenticate(int socket , struct URL *SERVER_URL){
     char *response = malloc(MAX_LENGTH);
     int responseSize = 0;
+
+    printf("Authenticating...\n");
 
     //USER
     char command[MAX_LENGTH];
